@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>灵感库</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="/inspiration/style.css">
+</head>
+<body>
+
+<div class="ly">
+  <!-- ==================== 侧边栏 ==================== -->
+  <aside class="sb">
+    <div class="sb-hd">
+      <div class="sb-logo">✨ 灵感库</div>
+      <div class="sb-sub">采集 → 复刻 → 沉淀</div>
+    </div>
+    <nav class="sb-nav">
+      <button class="sbn on" data-t="entry" onclick="go('entry')"><span class="sbn-ic">＋</span> 录入</button>
+      <button class="sbn" data-t="lib" onclick="go('lib')"><span class="sbn-ic">📚</span> 灵感库</button>
+      <button class="sbn" data-t="stats" onclick="go('stats')"><span class="sbn-ic">📊</span> 看板</button>
+      <button class="sbn" data-t="ai" onclick="go('ai')"><span class="sbn-ic">🤖</span> AI 分析</button>
+    </nav>
+    <div class="sb-ft">灵感库 v2.0</div>
+
+    <!-- 移动端汉堡 -->
+    <button class="sb-toggle" onclick="toggleSidebar()">☰</button>
+  </aside>
+
+  <!-- ==================== 底部导航（手机） ==================== -->
+  <nav class="bn">
+    <button class="bnb on" data-t="entry" onclick="go('entry')"><span class="bnb-ic">＋</span><span class="bnb-lb">录入</span></button>
+    <button class="bnb" data-t="lib" onclick="go('lib')"><span class="bnb-ic">📚</span><span class="bnb-lb">灵感库</span></button>
+    <button class="bnb" data-t="stats" onclick="go('stats')"><span class="bnb-ic">📊</span><span class="bnb-lb">看板</span></button>
+    <button class="bnb" data-t="ai" onclick="go('ai')"><span class="bnb-ic">🤖</span><span class="bnb-lb">AI</span></button>
+  </nav>
+
+  <!-- ==================== 主内容 ==================== -->
+  <main class="main" id="mainContent">
+
+    <!-- ====== 录入 ====== -->
+    <section id="t-entry" class="tab on">
+      <div class="card">
+        <div class="card-h">＋ 采集灵感</div>
+        <div class="fg">
+          <div class="ff full">
+            <label>视频链接 *</label>
+            <input class="ios-in" id="fLink" placeholder="粘贴竞品/同行的视频链接（抖音/快手/小红书等）">
+          </div>
+          <div class="ff"><label>灵感名称 *</label><input class="ios-in" id="fName" placeholder="例：太阳能路灯-安装对比、路锥-暴力测试"></div>
+          <div class="ff"><label>品牌</label><input class="ios-in" id="fBrand" list="dlBrand" placeholder="选品牌或手动输入" onchange="saveDlOpt('dlBrand',this.value)"></div>
+          <div class="ff"><label>产品类别</label><input class="ios-in" id="fCat" list="dlCat" placeholder="选品类或手动输入" onchange="saveDlOpt('dlCat',this.value)"></div>
+          <div class="ff full"><label>🎨 视觉锤（画面核心特征）</label><input class="ios-in" id="fVisual" list="dlVisual" placeholder="选常见模式或自己写" onchange="saveDlOpt('dlVisual',this.value)"></div>
+          <div class="ff full"><label>💬 文案钩子（开场原话 / 核心话术）</label><input class="ios-in" id="fHook" placeholder="如：农村道路别再摸黑走路了、这种路锥被车压了还能弹回来"></div>
+          <div class="ff full"><label>🧠 客户心理标签（逗号分隔）</label><input class="ios-in" id="fPsych" list="dlPsych" placeholder="选标签或手动输入" onchange="saveDlOpt('dlPsych',this.value)"></div>
+          <div class="ff"><label>日期</label><input type="text" class="ios-in mono" id="fDate" placeholder="年-月-日" readonly onclick="openDatePicker('fDate')"></div>
+          <div class="ff"><label>投手备注</label><input class="ios-in" id="fNote" placeholder="为什么觉得这个能跑量？有什么灵感？"></div>
+        </div>
+        <div class="st-row">
+          <label>灵感状态</label>
+          <div class="pills" id="stG">
+            <button class="pill t-on" data-v="待复刻" onclick="pickSt('待复刻')">待复刻</button>
+            <button class="pill" data-v="已验证" onclick="pickSt('已验证')">已验证</button>
+            <button class="pill" data-v="淘汰" onclick="pickSt('淘汰')">淘汰</button>
+          </div>
+        </div>
+        <div class="act-row">
+          <button class="btn-m" id="saveBtn" onclick="save()">💾 保存灵感</button>
+          <button class="btn-g" id="cancelBtn" onclick="cancelEdit()" style="display:none">取消编辑</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== 灵感库 ====== -->
+    <section id="t-lib" class="tab">
+      <div class="fl-bar">
+        <input type="text" class="ios-in" id="sS" placeholder="🔍 搜索名称 / 视觉锤 / 文案…" oninput="onSearch()">
+        <input type="text" class="ios-in bi" id="sB" placeholder="品牌" oninput="onSearch()">
+        <div class="pg">
+          <button class="fp on" data-f="all" onclick="setF(this,'all')">全部</button>
+          <button class="fp" data-f="待复刻" onclick="setF(this,'待复刻')">待复刻</button>
+          <button class="fp" data-f="已验证" onclick="setF(this,'已验证')">已验证</button>
+          <button class="fp" data-f="淘汰" onclick="setF(this,'淘汰')">淘汰</button>
+        </div>
+        <button class="btn-ex" onclick="doExport()">📥 导出Excel</button>
+        <span class="lib-count" id="libCount"></span>
+      </div>
+      <div class="ml" id="libList"></div>
+      <div class="pg-bar" id="pgBar" style="display:none">
+        <button class="pg-btn" id="pgPrev" onclick="goPage(-1)">‹ 上一页</button>
+        <span class="pg-info" id="pgInfo"></span>
+        <button class="pg-btn" id="pgNext" onclick="goPage(1)">下一页 ›</button>
+      </div>
+      <div class="empty" id="libE" style="display:none">
+        <div class="ei">📭</div><p>还没有灵感</p><p class="hint">先去录入一些创意，或加载示例数据</p>
+        <button class="btn-m" onclick="loadSample()">加载示例数据</button>
+      </div>
+    </section>
+
+    <!-- ====== 看板 ====== -->
+    <section id="t-stats" class="tab">
+      <div id="statsBody"></div>
+    </section>
+
+    <!-- ====== AI 分析 ====== -->
+    <section id="t-ai" class="tab">
+      <div id="aiBody"></div>
+    </section>
+
+  </main>
+</div>
+
+<div id="tBox"></div>
+
+<!-- ====== 复刻弹窗 ====== -->
+<div id="replModal" class="modal" style="display:none">
+  <div class="modal-overlay" onclick="closeReplForm()"></div>
+  <div class="modal-card">
+    <div class="modal-h">➕ 添加复刻记录</div>
+    <div class="modal-sub" id="replModalInsp">为「灵感名称」添加复刻</div>
+    <div class="modal-body-inner">
+      <div class="ff full">
+        <label>我们拍的视频链接 *</label>
+        <input class="ios-in mono" id="rfLink" placeholder="复制我们自己的视频链接">
+      </div>
+      <div class="fg">
+        <div class="ff"><label>消耗金额（元）</label><input type="number" class="ios-in mono" id="rfSpend" placeholder="0"></div>
+        <div class="ff"><label>展示量</label><input type="number" class="ios-in mono" id="rfImp" placeholder="0"></div>
+        <div class="ff"><label>复刻日期</label><input type="text" class="ios-in mono" id="rfDate" placeholder="年-月-日" readonly onclick="openDatePicker('rfDate')"></div>
+        <div class="ff">
+          <label>投放效果</label>
+          <div class="pills" id="rfEffG">
+            <button class="pill r-on" data-v="跑量" onclick="pickRfEff('跑量')">✅ 跑量</button>
+            <button class="pill" data-v="一般" onclick="pickRfEff('一般')">👌 一般</button>
+            <button class="pill" data-v="无效果" onclick="pickRfEff('无效果')">❌ 无效果</button>
+          </div>
+        </div>
+      </div>
+      <div class="ff full" style="border:none">
+        <label>投手笔记</label>
+        <input class="ios-in" id="rfNotes" placeholder="这次复刻的体会和发现">
+      </div>
+    </div>
+    <div class="modal-act">
+      <button class="btn-m" onclick="saveReplication()">💾 保存复刻</button>
+      <button class="btn-g" onclick="closeReplForm()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 编辑灵感冒窗 ====== -->
+<div id="editModal" class="modal" style="display:none">
+  <div class="modal-overlay" onclick="closeEditModal()"></div>
+  <div class="modal-card" style="width:560px">
+    <div class="modal-h">✏️ 编辑灵感</div>
+    <div class="modal-body-inner">
+      <div class="fg">
+        <div class="ff full"><label>视频链接</label><input class="ios-in" id="emLink"></div>
+        <div class="ff"><label>灵感名称 *</label><input class="ios-in" id="emName"></div>
+        <div class="ff"><label>品牌</label><input class="ios-in" id="emBrand" list="dlBrand" onchange="saveDlOpt('dlBrand',this.value)"></div>
+        <div class="ff"><label>产品类别</label><input class="ios-in" id="emCat" list="dlCat" onchange="saveDlOpt('dlCat',this.value)"></div>
+        <div class="ff full"><label>🎨 视觉锤</label><input class="ios-in" id="emVisual" list="dlVisual" onchange="saveDlOpt('dlVisual',this.value)"></div>
+        <div class="ff full"><label>💬 文案钩子</label><input class="ios-in" id="emHook"></div>
+        <div class="ff full"><label>🧠 心理标签</label><input class="ios-in" id="emPsych" list="dlPsych" onchange="saveDlOpt('dlPsych',this.value)"></div>
+        <div class="ff"><label>日期</label><input type="text" class="ios-in mono" id="emDate" placeholder="年-月-日" readonly onclick="openDatePicker('emDate')"></div>
+        <div class="ff"><label>投手备注</label><input class="ios-in" id="emNote"></div>
+      </div>
+      <div class="st-row" style="border:none">
+        <label>灵感状态</label>
+        <div class="pills" id="emStG">
+          <button class="pill t-on" data-v="待复刻" onclick="emPickSt('待复刻')">待复刻</button>
+          <button class="pill" data-v="已验证" onclick="emPickSt('已验证')">已验证</button>
+          <button class="pill" data-v="淘汰" onclick="emPickSt('淘汰')">淘汰</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-act">
+      <button class="btn-m" onclick="saveEditModal()">💾 保存</button>
+      <button class="btn-g" onclick="closeEditModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 下拉建议数据源 ====== -->
+<datalist id="dlBrand">
+  <option value="曜途"><option value="长和"><option value="满天红"><option value="西北"><option value="鑫莹">
+</datalist>
+<datalist id="dlCat">
+  <option value="路灯"><option value="旗杆"><option value="标牌"><option value="其他交安"><option value="个护"><option value="美妆"><option value="食品"><option value="家具"><option value="汽车">
+</datalist>
+<datalist id="dlVisual">
+  <option value="安装前后对比"><option value="暴力测试"><option value="承重实测"><option value="场景实拍"><option value="产品拆解特写"><option value="真人出镜实测"><option value="数据对比展示"><option value="使用前后对比">
+</datalist>
+<datalist id="dlPsych">
+  <option value="安全焦虑"><option value="品质焦虑"><option value="成本焦虑"><option value="价格敏感"><option value="专业认可"><option value="从众心理"><option value="踩坑恐惧"><option value="选择疲劳">
+</datalist>
+
+<!-- ====== 日期选择器 ====== -->
+<div id="dp" class="dp" style="display:none" onclick="dpClose(event)">
+  <div class="dp-card" onclick="event.stopPropagation()">
+    <div class="dp-hdr">
+      <button class="dp-nav" onclick="dpMonth(-1)">‹</button>
+      <span class="dp-ym" id="dpYM"></span>
+      <button class="dp-nav" onclick="dpMonth(1)">›</button>
+    </div>
+    <div class="dp-wk">
+      <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+    </div>
+    <div class="dp-gd" id="dpGD"></div>
+    <div class="dp-act">
+      <button class="btn-g" onclick="dpCancel()">取消</button>
+      <button class="btn-m" onclick="dpToday()">今天</button>
+    </div>
+  </div>
+</div>
+
+<script src="/inspiration/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "inspiration-engine",
+  "version": "2.0.0",
+  "description": "灵感库 — 采集 → 复刻 → 反馈 → 分析 (MySQL 版)",
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "node init-db.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^4.22.2",
+    "express-session": "^1.18.1",
+    "mysql2": "^3.12.0"
+  }
+}

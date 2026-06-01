@@ -1,0 +1,670 @@
+/* ==============================================================
+   灵感库 v3 — 数据存储在 MySQL 服务端，多人实时同步
+   ============================================================== */
+
+// ============ 数据层（全部走 API） ============
+let DATA = [];
+
+async function refreshData() {
+  try {
+    const res = await fetch('/inspiration/api/materials');
+    if (res.ok) DATA = await res.json();
+  } catch (e) { console.warn('refreshData error:', e); }
+  return DATA;
+}
+
+// ============ 状态 ============
+let editingId = null;
+let sSt = '待复刻';
+let fSt = 'all';
+let charts = {};
+let replInspId = null;
+let rfEff = '跑量';
+let curPage = 1;
+const PAGE_SIZE = 20;
+
+// ============ 下拉建议管理 ============
+const DL_KEY = 'inspiration_dl_opts';
+
+function loadDlOpts() {
+  const saved = JSON.parse(localStorage.getItem(DL_KEY) || '{}');
+  ['dlBrand','dlCat','dlVisual','dlPsych'].forEach(id => {
+    const dl = document.getElementById(id);
+    if (!dl) return;
+    const builtin = [...dl.querySelectorAll('option')].map(o => o.value);
+    const user = saved[id] || [];
+    const all = [...new Set([...builtin, ...user])];
+    dl.innerHTML = all.map(v => `<option value="${esc(v)}">`).join('');
+  });
+}
+
+function saveDlOpt(listId, val) {
+  if (!val || !val.trim()) return;
+  val = val.trim();
+  const saved = JSON.parse(localStorage.getItem(DL_KEY) || '{}');
+  if (!saved[listId]) saved[listId] = [];
+  if (!saved[listId].includes(val)) {
+    saved[listId].push(val);
+    localStorage.setItem(DL_KEY, JSON.stringify(saved));
+    const dl = document.getElementById(listId);
+    if (dl) { const opt = document.createElement('option'); opt.value = val; dl.appendChild(opt); }
+  }
+}
+
+// ================================================================
+// 工具
+// ================================================================
+
+const td = () => new Date().toISOString().split('T')[0];
+const esc = s => { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+
+// 自动处理 401 会话过期 — 全局拦截
+const origFetch = window.fetch;
+window.fetch = async function(url, opts) {
+  const res = await origFetch(url, opts);
+  if (res.status === 401 && !url.toString().includes('/inspiration/api/auth/')) {
+    location.reload();
+    throw new Error('未登录');
+  }
+  return res;
+};
+
+function toast(msg, type = 'ok') {
+  const t = document.createElement('div');
+  t.className = 'tst tst-' + type;
+  t.textContent = msg;
+  document.getElementById('tBox').appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2600);
+}
+
+// ================================================================
+// 日期选择器
+// ================================================================
+
+let dpTarget = null, dpY = 0, dpM = 0;
+
+function openDatePicker(inputId) {
+  dpTarget = document.getElementById(inputId);
+  if (!dpTarget) return;
+  const now = new Date();
+  const val = dpTarget.value;
+  if (val) { const p = val.split('-'); if (p.length === 3) { dpY = parseInt(p[0]); dpM = parseInt(p[1]) - 1; } else { dpY = now.getFullYear(); dpM = now.getMonth(); } }
+  else { dpY = now.getFullYear(); dpM = now.getMonth(); }
+  renderDP();
+  document.getElementById('dp').style.display = 'flex';
+}
+function dpClose(e) { if (e && e.target !== e.currentTarget) return; document.getElementById('dp').style.display = 'none'; dpTarget = null; }
+function dpCancel() { document.getElementById('dp').style.display = 'none'; dpTarget = null; }
+function dpToday() { if (!dpTarget) return; const d = new Date(); dpTarget.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); document.getElementById('dp').style.display = 'none'; dpTarget = null; }
+function dpMonth(delta) { dpM += delta; if (dpM < 0) { dpM = 11; dpY--; } if (dpM > 11) { dpM = 0; dpY++; } renderDP(); }
+function renderDP() {
+  document.getElementById('dpYM').textContent = dpY + '年' + (dpM+1) + '月';
+  const grid = document.getElementById('dpGD');
+  const today = new Date();
+  const sel = dpTarget ? dpTarget.value.split('-').map(Number) : null;
+  const first = new Date(dpY, dpM, 1).getDay();
+  const startOff = first === 0 ? 6 : first - 1;
+  const daysInMonth = new Date(dpY, dpM+1, 0).getDate();
+  const daysInPrev = new Date(dpY, dpM, 0).getDate();
+  let html = '';
+  for (let i = startOff - 1; i >= 0; i--) html += `<button class="dp-d dim">${daysInPrev - i}</button>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = dpY === today.getFullYear() && dpM === today.getMonth() && d === today.getDate();
+    const isSel = sel && sel[0] === dpY && sel[1] === dpM+1 && sel[2] === d;
+    html += `<button class="dp-d${isToday?' today':''}${isSel?' sel':''}" onclick="dpSelect(${d})">${d}</button>`;
+  }
+  const total = startOff + daysInMonth;
+  const rem = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let d = 1; d <= rem; d++) html += `<button class="dp-d dim">${d}</button>`;
+  grid.innerHTML = html;
+}
+function dpSelect(day) { if (!dpTarget) return; dpTarget.value = dpY + '-' + String(dpM+1).padStart(2,'0') + '-' + String(day).padStart(2,'0'); document.getElementById('dp').style.display = 'none'; dpTarget = null; }
+
+// ================================================================
+// 导航
+// ================================================================
+
+function toggleSidebar() { document.querySelector('.sb').classList.toggle('open'); }
+
+async function go(tab) {
+  document.querySelectorAll('.tab').forEach(s => s.classList.remove('on'));
+  document.getElementById('t-' + tab).classList.add('on');
+  document.querySelectorAll('.sbn').forEach(b => b.classList.remove('on'));
+  const sbn = document.querySelector(`.sbn[data-t="${tab}"]`);
+  if (sbn) sbn.classList.add('on');
+  document.querySelectorAll('.bnb').forEach(b => b.classList.remove('on'));
+  const bnb = document.querySelector(`.bnb[data-t="${tab}"]`);
+  if (bnb) bnb.classList.add('on');
+  if (window.innerWidth <= 860) { const sb = document.querySelector('.sb'); if (sb) sb.classList.remove('open'); }
+  if (tab === 'lib') await renderLib();
+  if (tab === 'stats') await renderStats();
+  if (tab === 'ai') await renderAI();
+}
+
+function pickSt(v) {
+  sSt = v;
+  document.querySelectorAll('#stG .pill').forEach(b => {
+    b.className = 'pill';
+    const map = { '待复刻': 't-on', '已验证': 'r-on', '淘汰': 's-on' };
+    if (b.dataset.v === v) b.classList.add(map[v]);
+  });
+}
+
+// ================================================================
+// 灵感表单
+// ================================================================
+
+function clearF() {
+  ['fLink','fName','fBrand','fCat','fVisual','fHook','fPsych','fNote'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('fDate').value = td();
+  pickSt('待复刻');
+  editingId = null;
+  document.getElementById('saveBtn').textContent = '💾 保存灵感';
+  document.getElementById('cancelBtn').style.display = 'none';
+}
+
+function cancelEdit() { clearF(); toast('已取消', 'inf'); }
+
+async function save() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { toast('请填写灵感名称', 'err'); return; }
+
+  const obj = {
+    link: document.getElementById('fLink').value.trim(),
+    name,
+    brand: document.getElementById('fBrand').value.trim(),
+    category: document.getElementById('fCat').value.trim(),
+    visual: document.getElementById('fVisual').value.trim(),
+    hook: document.getElementById('fHook').value.trim(),
+    psychology: document.getElementById('fPsych').value.trim(),
+    status: sSt,
+    date: document.getElementById('fDate').value || td(),
+    note: document.getElementById('fNote').value.trim()
+  };
+
+  try {
+    if (editingId) {
+      await fetch('/inspiration/api/materials/' + editingId, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(obj) });
+      toast('已更新', 'ok');
+    } else {
+      await fetch('/inspiration/api/materials', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(obj) });
+      toast('已保存', 'ok');
+    }
+    clearF();
+    await refreshData();
+  } catch (err) { toast('保存失败: ' + err.message, 'err'); }
+}
+
+// ================================================================
+// 编辑灵感冒窗
+// ================================================================
+
+let emId = null, emSt = '待复刻';
+
+function editInspiration(id) {
+  const d = DATA.find(x => x.id === id);
+  if (!d) return;
+  emId = id;
+  document.getElementById('emLink').value = d.link || '';
+  document.getElementById('emName').value = d.name;
+  document.getElementById('emBrand').value = d.brand || '';
+  document.getElementById('emCat').value = d.category || '';
+  document.getElementById('emVisual').value = d.visual || '';
+  document.getElementById('emHook').value = d.hook || '';
+  document.getElementById('emPsych').value = d.psychology || '';
+  document.getElementById('emDate').value = d.date || '';
+  document.getElementById('emNote').value = d.note || '';
+  emSt = d.status || '待复刻';
+  document.querySelectorAll('#emStG .pill').forEach(b => {
+    b.className = 'pill';
+    const map = { '待复刻': 't-on', '已验证': 'r-on', '淘汰': 's-on' };
+    if (b.dataset.v === emSt) b.classList.add(map[emSt]);
+  });
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+function emPickSt(v) {
+  emSt = v;
+  document.querySelectorAll('#emStG .pill').forEach(b => {
+    b.className = 'pill';
+    const map = { '待复刻': 't-on', '已验证': 'r-on', '淘汰': 's-on' };
+    if (b.dataset.v === v) b.classList.add(map[v]);
+  });
+}
+
+function closeEditModal() { document.getElementById('editModal').style.display = 'none'; emId = null; }
+
+async function saveEditModal() {
+  if (!emId) return;
+  const name = document.getElementById('emName').value.trim();
+  if (!name) { toast('请填写灵感名称', 'err'); return; }
+
+  try {
+    await fetch('/inspiration/api/materials/' + emId, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        link: document.getElementById('emLink').value.trim(), name,
+        brand: document.getElementById('emBrand').value.trim(),
+        category: document.getElementById('emCat').value.trim(),
+        visual: document.getElementById('emVisual').value.trim(),
+        hook: document.getElementById('emHook').value.trim(),
+        psychology: document.getElementById('emPsych').value.trim(),
+        status: emSt,
+        date: document.getElementById('emDate').value || '',
+        note: document.getElementById('emNote').value.trim()
+      })
+    });
+    closeEditModal();
+    await refreshData();
+    await renderLib();
+    toast('已更新 ✅', 'ok');
+  } catch (err) { toast('更新失败: ' + err.message, 'err'); }
+}
+
+async function delInspiration(id) {
+  if (!confirm('确认删除这个灵感及其所有复刻记录？')) return;
+  try {
+    await fetch('/inspiration/api/materials/' + id, { method: 'DELETE' });
+    await refreshData();
+    await renderLib();
+    toast('已删除', 'ok');
+  } catch (err) { toast('删除失败: ' + err.message, 'err'); }
+}
+
+// ================================================================
+// 复刻弹窗
+// ================================================================
+
+function openReplForm(id) {
+  const insp = DATA.find(d => d.id === id);
+  if (!insp) return;
+  replInspId = id;
+  document.getElementById('replModalInsp').textContent = '为「' + insp.name + '」添加复刻';
+  document.getElementById('rfLink').value = '';
+  document.getElementById('rfSpend').value = '';
+  document.getElementById('rfImp').value = '';
+  document.getElementById('rfDate').value = td();
+  document.getElementById('rfNotes').value = '';
+  rfEff = '跑量';
+  document.querySelectorAll('#rfEffG .pill').forEach(b => { b.className = 'pill'; if (b.dataset.v === '跑量') b.classList.add('r-on'); });
+  document.getElementById('replModal').style.display = 'flex';
+  document.getElementById('rfLink').focus();
+}
+
+function closeReplForm() { document.getElementById('replModal').style.display = 'none'; replInspId = null; }
+
+function pickRfEff(v) {
+  rfEff = v;
+  document.querySelectorAll('#rfEffG .pill').forEach(b => {
+    b.className = 'pill';
+    const map = { '跑量': 'r-on', '一般': 'd-on', '无效果': 's-on' };
+    if (b.dataset.v === v) b.classList.add(map[v]);
+  });
+}
+
+async function saveReplication() {
+  if (!replInspId) return;
+  const link = document.getElementById('rfLink').value.trim();
+  if (!link) { toast('请填写复刻视频链接', 'err'); return; }
+
+  try {
+    await fetch('/inspiration/api/replications', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        materialId: replInspId, link,
+        spend: parseFloat(document.getElementById('rfSpend').value) || 0,
+        impressions: parseInt(document.getElementById('rfImp').value) || 0,
+        effect: rfEff,
+        notes: document.getElementById('rfNotes').value.trim(),
+        date: document.getElementById('rfDate').value || td()
+      })
+    });
+    closeReplForm();
+    await refreshData();
+    await renderLib();
+    toast('复刻记录已保存 ✅', 'ok');
+  } catch (err) { toast('保存失败: ' + err.message, 'err'); }
+}
+
+async function delReplication(inspId, replId) {
+  try {
+    await fetch('/inspiration/api/replications/' + replId, { method: 'DELETE' });
+    await refreshData();
+    await renderLib();
+    toast('已删除复刻记录', 'ok');
+  } catch (err) { toast('删除失败: ' + err.message, 'err'); }
+}
+
+// ================================================================
+// 灵感库渲染
+// ================================================================
+
+function loadLibData() {
+  if (!DATA) return [];
+  let data = [...DATA];
+  const search = document.getElementById('sS')?.value?.trim().toLowerCase();
+  const brand = document.getElementById('sB')?.value?.trim().toLowerCase();
+  if (search) {
+    data = data.filter(d =>
+      (d.name||'').toLowerCase().includes(search) ||
+      (d.visual||'').toLowerCase().includes(search) ||
+      (d.hook||'').toLowerCase().includes(search) ||
+      (d.psychology||'').toLowerCase().includes(search)
+    );
+  }
+  if (fSt !== 'all') data = data.filter(d => d.status === fSt);
+  if (brand) data = data.filter(d => (d.brand||'').toLowerCase().includes(brand));
+  return data;
+}
+
+async function renderLib() {
+  await refreshData();
+  const list = document.getElementById('libList');
+  const empty = document.getElementById('libE');
+  const pgBar = document.getElementById('pgBar');
+  const pgInfo = document.getElementById('pgInfo');
+  const pgPrev = document.getElementById('pgPrev');
+  const pgNext = document.getElementById('pgNext');
+  const countEl = document.getElementById('libCount');
+
+  const allData = loadLibData();
+  const totalFiltered = allData.length;
+  const totalAll = DATA.length;
+  const maxPage = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
+  if (curPage > maxPage) curPage = maxPage;
+  const start = (curPage - 1) * PAGE_SIZE;
+  const data = allData.slice(start, start + PAGE_SIZE);
+  countEl.textContent = totalAll > 0 ? '共 ' + totalAll + ' 条' : '';
+
+  if (!allData.length) {
+    list.innerHTML = '';
+    pgBar.style.display = 'none';
+    empty.style.display = totalAll === 0 ? 'block' : 'none';
+    if (totalAll > 0) list.innerHTML = '<div class="empty" style="padding:30px"><p>🔍 没有匹配的灵感</p><p class="hint">试试其他搜索词</p></div>';
+    return;
+  }
+  empty.style.display = 'none';
+
+  if (maxPage > 1) {
+    pgBar.style.display = 'flex';
+    pgInfo.textContent = curPage + ' / ' + maxPage;
+    pgPrev.disabled = curPage <= 1;
+    pgNext.disabled = curPage >= maxPage;
+  } else pgBar.style.display = 'none';
+
+  list.innerHTML = data.map(d => {
+    const stMap = { '待复刻':'s-待复刻','已验证':'s-已验证','淘汰':'s-淘汰' };
+    const sc = stMap[d.status] || 's-待复刻';
+    const reps = d.replications || [];
+    const repCount = reps.length;
+    const effCount = { '跑量':0,'一般':0,'无效果':0 };
+    reps.forEach(r => { if (effCount[r.effect] !== undefined) effCount[r.effect]++; });
+    let effTags = '';
+    if (repCount > 0) effTags = Object.entries(effCount).filter(([k,v])=>v>0).map(([k,v])=>`<span class="eff eff-${k}">${k} ${v}</span>`).join('');
+
+    return `<div class="mc">
+      <div class="mc-top"><div class="mc-n">${esc(d.name)}</div><div class="mc-st ${sc}">${d.status}</div></div>
+      ${d.link ? `<div class="mc-link" onclick="window.open('${esc(d.link)}','_blank')">🔗 查看原视频</div>` : ''}
+      <div class="mc-mt2">${d.visual ? '🎨 '+esc(d.visual) : ''}${d.hook ? '<span class="hook-sep"></span>💬 '+esc(d.hook) : ''}</div>
+      <div class="mc-tg">${d.brand ? '<span class="tg"><span class="tl">品牌</span>'+esc(d.brand)+'</span>' : ''}${d.category ? '<span class="tg"><span class="tl">品类</span>'+esc(d.category)+'</span>' : ''}</div>
+      <div class="mc-rep-bar">${repCount > 0 ? '<span class="rep-summary">📋 复刻 <strong>'+repCount+'</strong> 次</span> '+effTags : '<span class="rep-summary rep-none">⏳ 尚未复刻</span>'}</div>
+      <div class="mc-act">
+        <button class="btn-repl" onclick="openReplForm('${d.id}')">➕ 添加复刻</button>
+        ${repCount > 0 ? `<button onclick="toggleDetail('${d.id}')">📋 详情</button>` : ''}
+        <button onclick="editInspiration('${d.id}')">✏️</button>
+        <button class="del" onclick="delInspiration('${d.id}')">🗑️</button>
+      </div>
+      <div class="mc-detail" id="detail-${d.id}" style="display:none">
+        <div class="repl-list-label">复刻记录</div>
+        ${reps.map(r => {
+          const emoji = {'跑量':'✅','一般':'👌','无效果':'❌'};
+          return `<div class="repl-item">
+            <div class="repl-top"><span class="repl-eff eff-${r.effect}">${emoji[r.effect]||'👌'} ${r.effect}</span><span class="repl-date">${r.date||'-'}</span><button class="repl-del" onclick="delReplication('${d.id}','${r.id}')">✕</button></div>
+            <div class="repl-row">${r.link ? '<span class="repl-link" onclick="window.open(\''+esc(r.link)+'\',\'_blank\')">🔗 视频</span>' : ''}<span>💰 ¥${(r.spend||0).toLocaleString()}</span><span>👁️ ${(r.impressions||0).toLocaleString()}</span></div>
+            ${r.notes ? '<div class="repl-notes">📝 '+esc(r.notes)+'</div>' : ''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDetail(id) { const el = document.getElementById('detail-'+id); if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+
+function onSearch() { curPage = 1; renderLib(); }
+function goPage(dir) { const allData = loadLibData(); const maxPage = Math.max(1, Math.ceil(allData.length/PAGE_SIZE)); curPage = Math.max(1, Math.min(maxPage, curPage+dir)); renderLib(); window.scrollTo({top: document.getElementById('libList').offsetTop-80, behavior:'smooth'}); }
+function setF(btn, val) { fSt = val; curPage = 1; document.querySelectorAll('.pg .fp').forEach(b => b.classList.remove('on')); btn.classList.add('on'); renderLib(); }
+
+// ================================================================
+// 导出 Excel
+// ================================================================
+
+async function doExport() {
+  await refreshData();
+  if (!DATA.length) { toast('没有数据可导出', 'err'); return; }
+
+  const rows1 = DATA.map(d => ({
+    '灵感名称': d.name, '视频链接': d.link||'', '品牌': d.brand||'', '产品类别': d.category||'',
+    '视觉锤': d.visual||'', '文案钩子': d.hook||'', '心理标签': d.psychology||'',
+    '灵感状态': d.status||'', '采集日期': d.date||'', '投手备注': d.note||'', '复刻次数': (d.replications||[]).length,
+  }));
+
+  const rows2 = [];
+  DATA.forEach(d => { (d.replications||[]).forEach(r => { rows2.push({
+    '所属灵感': d.name, '品牌': d.brand||'', '视觉锤': d.visual||'', '心理标签': d.psychology||'',
+    '我们拍的链接': r.link||'', '消耗(元)': r.spend||0, '展示量': r.impressions||0,
+    '投放效果': r.effect||'', '投手笔记': r.notes||'', '复刻日期': r.date||'',
+  }); }); });
+
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.json_to_sheet(rows1);
+  ws1['!cols'] = [{wch:22},{wch:35},{wch:12},{wch:14},{wch:30},{wch:28},{wch:22},{wch:10},{wch:12},{wch:24},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws1, '灵感列表');
+  const ws2 = XLSX.utils.json_to_sheet(rows2);
+  ws2['!cols'] = [{wch:22},{wch:12},{wch:30},{wch:22},{wch:35},{wch:12},{wch:12},{wch:10},{wch:28},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws2, '复刻记录');
+  XLSX.writeFile(wb, '灵感库_'+td()+'.xlsx');
+  toast('Excel 导出成功 ✅', 'ok');
+}
+
+// ================================================================
+// 统计看板
+// ================================================================
+
+async function renderStats() {
+  const body = document.getElementById('statsBody');
+  body.innerHTML = '<div class="empty" style="padding:30px"><p>⏳ 加载中…</p></div>';
+
+  try {
+    const res = await fetch('/inspiration/api/analysis');
+    if (!res.ok) throw new Error('加载失败');
+    const d = await res.json();
+
+    if (!d.metrics.total) {
+      body.innerHTML = '<div class="empty"><div class="ei">📊</div><p>还没有数据</p><p class="hint">录入灵感并添加复刻记录后，看板会自动生成</p></div>';
+      return;
+    }
+
+    const { total, repCount, paoMian, daiFuKe } = d.metrics;
+    const runRate = repCount > 0 ? ((paoMian / repCount) * 100).toFixed(0) : 0;
+
+    body.innerHTML = `
+      <div class="metrics">
+        <div class="metric"><div class="mv">${total}</div><div class="ml">总灵感</div></div>
+        <div class="metric g"><div class="mv">${repCount}</div><div class="ml">已复刻</div></div>
+        <div class="metric o"><div class="mv">${runRate}%</div><div class="ml">跑量率</div></div>
+        <div class="metric"><div class="mv">${daiFuKe}</div><div class="ml">待复刻</div></div>
+      </div>
+      ${daiFuKe > 0 ? `
+      <div class="card">
+        <div class="card-h">📋 待复刻灵感（${daiFuKe} 条等待拍摄）</div>
+        <div class="combo-wrap"><table class="combo-tbl">
+          <thead><tr><th>灵感</th><th>视觉锤</th><th>操作</th></tr></thead>
+          <tbody>${(d.pending||[]).map(p => `<tr><td><strong>${esc(p.name)}</strong></td><td>${esc(p.visual||'-')}</td><td><button class="btn-sm" onclick="go('lib')">➕ 添加复刻</button></td></tr>`).join('')}</tbody>
+        </table></div>
+      </div>` : ''}
+      <div class="ch-row three">
+        <div class="card"><div class="card-h">📊 复刻效果分布</div><div class="ch-area" id="chart-eff"></div></div>
+        <div class="card"><div class="card-h">🎨 视觉锤跑量次数 Top6</div><div class="ch-area" id="chart-vis-rank"></div></div>
+        <div class="card"><div class="card-h">🧠 心理标签跑量次数 Top6</div><div class="ch-area" id="chart-psy-rank"></div></div>
+      </div>
+      ${d.visual && d.visual.length > 0 ? `
+      <div class="card">
+        <div class="card-h">🏆 视觉锤成功率排名</div>
+        <div class="combo-wrap"><table class="combo-tbl">
+          <thead><tr><th>#</th><th>视觉锤</th><th>复刻次数</th><th>跑量次数</th><th>成功率</th></tr></thead>
+          <tbody>${d.visual.map((v,i) => `<tr><td>${i+1}</td><td>${esc(v.name)}</td><td>${v.total}</td><td class="cv">${v.pao}</td><td><span class="rate-badge ${parseInt(v.rate)>=60?'rate-high':parseInt(v.rate)>=30?'rate-mid':'rate-low'}">${v.rate}%</span></td></tr>`).join('')}</tbody>
+        </table></div>
+      </div>` : ''}
+    `;
+
+    Object.values(charts).forEach(c => { try { c.destroy(); } catch(e) {} });
+    charts = {};
+
+    const effColors = {'跑量':'#34C759','一般':'#FF9500','无效果':'#FF3B30'};
+    const effLabels = Object.keys(d.effCounts);
+    if (effLabels.length) {
+      const ctx = document.getElementById('chart-eff').getContext('2d');
+      charts.eff = new Chart(ctx, { type:'doughnut', data:{ labels:effLabels, datasets:[{ data:effLabels.map(l=>d.effCounts[l]), backgroundColor:effLabels.map(l=>effColors[l]||'#8E8E93'), borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ padding:10, font:{ size:11 } } } } } });
+    }
+    if (d.visual && d.visual.length) {
+      const ctx = document.getElementById('chart-vis-rank').getContext('2d');
+      const top = d.visual.slice(0, 6);
+      ctx.canvas.parentElement.style.aspectRatio = '1.2';
+      charts.visRank = new Chart(ctx, { type:'bar', data:{ labels:top.map(v=>v.name.length>8?v.name.slice(0,8)+'…':v.name), datasets:[ { label:'跑量', data:top.map(v=>v.pao), backgroundColor:'#34C759', borderRadius:3 }, { label:'其他', data:top.map(v=>v.total-v.pao), backgroundColor:'#E8E8ED', borderRadius:3 } ] }, options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ position:'top', labels:{ font:{ size:10 } } } }, scales:{ x:{ stacked:true, grid:{ display:false }, ticks:{ font:{ size:9 } } }, y:{ stacked:true, grid:{ display:false }, ticks:{ font:{ size:9 } } } } } });
+    }
+    if (d.psychology && d.psychology.length) {
+      const ctx = document.getElementById('chart-psy-rank').getContext('2d');
+      const top = d.psychology.slice(0, 6);
+      ctx.canvas.parentElement.style.aspectRatio = '1.2';
+      charts.psyRank = new Chart(ctx, { type:'bar', data:{ labels:top.map(v=>v.name.length>8?v.name.slice(0,8)+'…':v.name), datasets:[ { label:'跑量', data:top.map(v=>v.pao), backgroundColor:'#AF52DE', borderRadius:3 }, { label:'其他', data:top.map(v=>v.total-v.pao), backgroundColor:'#E8E8ED', borderRadius:3 } ] }, options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ position:'top', labels:{ font:{ size:10 } } } }, scales:{ x:{ stacked:true, grid:{ display:false }, ticks:{ font:{ size:9 } } }, y:{ stacked:true, grid:{ display:false }, ticks:{ font:{ size:9 } } } } } });
+    }
+  } catch (err) {
+    body.innerHTML = '<div class="empty"><p>❌ 加载失败: ' + err.message + '</p></div>';
+  }
+}
+
+// ================================================================
+// AI 分析
+// ================================================================
+
+async function renderAI() {
+  const body = document.getElementById('aiBody');
+  await refreshData();
+  if (!DATA.length) {
+    body.innerHTML = '<div class="empty"><div class="ei">🤖</div><p>还没有数据</p><p class="hint">录入灵感并添加复刻记录后，AI 会自动分析经验</p></div>';
+    return;
+  }
+
+  body.innerHTML = '<div class="empty" style="padding:40px"><p>⏳ AI 正在分析数据，请稍候…</p></div>';
+
+  fetch('/inspiration/api/ai/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) })
+  .then(r => r.json().then(j => ({ ok: r.ok, data: j })))
+  .then(({ ok, data }) => { if (!ok) throw new Error(data.error || '失败'); renderAIResult(data.reply); })
+  .catch(err => {
+    console.warn('AI API 不可用:', err.message);
+    renderLocalAI();
+  });
+}
+
+function renderAIResult(reply) {
+  const body = document.getElementById('aiBody');
+  const total = DATA.length;
+  const allRep = DATA.flatMap(d => (d.replications||[]).map(r => ({...r, inspName:d.name, visual:d.visual, psych:d.psychology})));
+  const repCount = allRep.length;
+  const paoMianReps = allRep.filter(r => r.effect === '跑量');
+  const paoMianInsp = DATA.filter(d => (d.replications||[]).some(r => r.effect === '跑量')).length;
+  const formatted = reply.replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^(\d+\.\s)/gm,'<br>$1');
+
+  body.innerHTML = `
+    <div class="exec-card" style="background:linear-gradient(135deg,#007AFF,#5856D6)">
+      <div class="el">🤖 DeepSeek AI 深度分析</div>
+      <div class="ev" style="font-size:.88rem;font-weight:500">${formatted}</div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="mv">${total}</div><div class="ml">总灵感</div></div>
+      <div class="metric g"><div class="mv">${repCount}</div><div class="ml">复刻次数</div></div>
+      <div class="metric o"><div class="mv">${paoMianReps.length}</div><div class="ml">跑量次数</div></div>
+      <div class="metric"><div class="mv">${paoMianInsp}</div><div class="ml">跑通灵感</div></div>
+    </div>`;
+}
+
+function renderLocalAI() {
+  const body = document.getElementById('aiBody');
+  const total = DATA.length;
+  const allRep = DATA.flatMap(d => (d.replications||[]).map(r => ({...r, inspName:d.name, visual:d.visual, psych:d.psychology})));
+  const repCount = allRep.length;
+  const paoMianReps = allRep.filter(r => r.effect === '跑量');
+  const noEffReps = allRep.filter(r => r.effect === '无效果');
+  const paoMianInsp = DATA.filter(d => (d.replications||[]).some(r => r.effect === '跑量')).length;
+
+  const lines = [];
+  if (paoMianReps.length > 0) {
+    lines.push(`共复刻 ${repCount} 次，其中跑量 ${paoMianReps.length} 次（${(paoMianReps.length/repCount*100).toFixed(0)}%），无效果 ${noEffReps.length} 次。`);
+    lines.push(`有 ${paoMianInsp} 个灵感经过复刻验证跑通了，占${total}个灵感的 ${(paoMianInsp/total*100).toFixed(0)}%。`);
+  }
+  const visMap = {};
+  allRep.forEach(r => { if (!r.visual) return; if (!visMap[r.visual]) visMap[r.visual] = {total:0,pao:0,no:0}; visMap[r.visual].total++; if (r.effect==='跑量') visMap[r.visual].pao++; if (r.effect==='无效果') visMap[r.visual].no++; });
+  const visList = Object.entries(visMap).map(([k,v])=>({name:k,...v,rate:v.total>0?v.pao/v.total:0})).sort((a,b)=>b.rate-a.rate);
+  const bestVis = visList.filter(v=>v.pao>=1&&v.rate>=0.5);
+  if (bestVis.length) { const t=bestVis[0]; lines.push(`视觉锤「${t.name}」复刻 ${t.total} 次，跑量 ${t.pao} 次（成功率 ${(t.rate*100).toFixed(0)}%），是最值得复制的视觉模式。`); }
+
+  const psyMap = {};
+  allRep.forEach(r => { if (!r.psych) return; r.psych.split(/[,，、/|]/).map(s=>s.trim()).filter(Boolean).forEach(p => { if(!psyMap[p]) psyMap[p]={total:0,pao:0}; psyMap[p].total++; if(r.effect==='跑量') psyMap[p].pao++; }); });
+  const psyList = Object.entries(psyMap).map(([k,v])=>({name:k,...v,rate:v.total>0?v.pao/v.total:0})).sort((a,b)=>b.rate-a.rate);
+  const bestPsy = psyList.filter(p=>p.pao>=1&&p.rate>=0.5);
+  if (bestPsy.length) { const t=bestPsy[0]; lines.push(`心理标签「${t.name}」复刻跑量率 ${(t.rate*100).toFixed(0)}%，是驱动转化的核心用户动机。`); }
+
+  const comboMap = {};
+  allRep.forEach(r => { const vs=r.visual||''; if(!vs||!r.psych) return; r.psych.split(/[,，、/|]/).map(s=>s.trim()).filter(Boolean).forEach(p=>{const k=vs+' × '+p; if(!comboMap[k]) comboMap[k]={name:k,visual:vs,psych:p,total:0,pao:0}; comboMap[k].total++; if(r.effect==='跑量') comboMap[k].pao++;}); });
+  const comboList = Object.values(comboMap).filter(c=>c.total>=1).map(c=>({...c,rate:c.pao/c.total})).sort((a,b)=>b.rate-a.rate);
+  const bestCombo = comboList.filter(c=>c.pao>=1&&c.rate>=0.5);
+  if (bestCombo.length) { const c=bestCombo[0]; lines.push(`最佳组合「${c.visual} + ${c.psych}」复刻 ${c.total} 次，跑量 ${c.pao} 次，建议重点复制该模式。`); }
+  if (noEffReps.length>=2) { const noVisMap={}; noEffReps.forEach(r=>{if(r.visual)noVisMap[r.visual]=(noVisMap[r.visual]||0)+1;}); const w=Object.entries(noVisMap).sort((a,b)=>b[1]-a[1])[0]; if(w&&w[1]>=2) lines.push(`⚠️ 视觉锤「${w[0]}」有 ${w[1]} 次复刻无效果，建议复盘或放弃该方向。`); }
+  if (lines.length===0) lines.push('当前数据量不足以生成有效分析，请继续积累复刻记录。');
+  const comboTop = comboList.filter(c=>c.total>=1).sort((a,b)=>b.total-a.total).slice(0,8);
+
+  body.innerHTML = `
+    <div class="exec-card" style="background:linear-gradient(135deg,#FF9500,#FF3B30)">
+      <div class="el">📊 本地规则分析（AI 未连接）</div>
+      <div class="ev" style="font-size:.88rem">${lines.map(t=>'• '+t).join('\n')}<br><br><span style="font-size:.75rem;opacity:.7">提示：配置 DEEPSEEK_API_KEY 后可获得 AI 深度分析</span></div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="mv">${total}</div><div class="ml">总灵感</div></div>
+      <div class="metric g"><div class="mv">${repCount}</div><div class="ml">复刻次数</div></div>
+      <div class="metric o"><div class="mv">${paoMianReps.length}</div><div class="ml">跑量次数</div></div>
+      <div class="metric"><div class="mv">${paoMianInsp}</div><div class="ml">跑通灵感</div></div>
+    </div>
+    ${comboTop.length>0 ? `<div class="card"><div class="card-h">🔗 视觉锤 × 心理标签 组合表现</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>#</th><th>组合</th><th>复刻</th><th>跑量</th><th>成功率</th></tr></thead><tbody>${comboTop.map((c,i)=>`<tr><td>${i+1}</td><td>${c.name}</td><td>${c.total}</td><td class="cv">${c.pao}</td><td><span class="rate-badge ${c.rate>=0.6?'rate-high':c.rate>=0.3?'rate-mid':'rate-low'}">${(c.rate*100).toFixed(0)}%</span></td></tr>`).join('')}</tbody></table></div></div>`:''}
+  `;
+}
+
+// ================================================================
+// 示例数据
+// ================================================================
+
+async function loadSample() {
+  try {
+    await fetch('/inspiration/api/materials/sample', { method: 'POST' });
+    await refreshData();
+    toast('已加载示例数据（含复刻记录）', 'ok');
+    go('lib');
+  } catch (err) { toast('加载失败: ' + err.message, 'err'); }
+}
+
+// ================================================================
+// 初始化
+// ================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadDlOpts();
+  document.getElementById('fDate').value = td();
+  document.getElementById('rfDate').value = td();
+  // 检查数据
+  refreshData().then(data => {
+    if (!data.length) toast('欢迎使用灵感库！先去录入灵感或加载示例数据', 'inf');
+  });
+});
