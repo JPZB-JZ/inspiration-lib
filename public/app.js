@@ -1393,6 +1393,38 @@ async function renderStats() {
       ctx.canvas.parentElement.style.aspectRatio = '1.2';
       charts.psyRank = new Chart(ctx, { type:'bar', data:{ labels:top.map(v=>v.name.length>8?v.name.slice(0,8)+'…':v.name), datasets:[ { label:'跑量', data:top.map(v=>v.pao), backgroundColor:'#AF52DE', borderRadius:3 }, { label:'其他', data:top.map(v=>v.total-v.pao), backgroundColor:'#E8E8ED', borderRadius:3 } ] }, options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ position:'top', labels:{ font:{ size:10 } } } }, scales:{ x:{ stacked:true, grid:{ display:false }, ticks:{ font:{ size:9 } } }, y:{ stacked:true, grid:{ display:false }, ticks:{ font:{ size:9 } } } } } });
     }
+
+  // 复刻详情表格
+  try {
+    var repRes = await fetch('/inspiration/api/replications/dashboard');
+    if (repRes.ok) {
+      var repData = await repRes.json();
+      if (repData && repData.length) {
+        var repHtml = '<div class="card" style="margin-top:12px"><div class="card-h">🔄 复刻详情</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr>' +
+          '<th>日期</th><th>来源灵感</th><th>视觉锤</th><th>文案钩子</th><th>心理标签</th>' +
+          '<th>消耗</th><th>展示</th><th>线索</th><th>线索成本</th><th>效果</th></tr></thead><tbody>';
+        repData.forEach(function(r) {
+          var effEmoji = {'跑量':'✅','一般':'👌','无效果':'❌'};
+          var effColor = {'跑量':'var(--green)','一般':'var(--orange)','无效果':'var(--red)'};
+          repHtml += '<tr>' +
+            '<td style="white-space:nowrap;color:var(--t4);font-size:.72rem">' + (r.date || '-') + '</td>' +
+            '<td><strong>' + esc(r.inspName) + '</strong></td>' +
+            '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspVisual) + '">' + esc(r.inspVisual||'-') + '</td>' +
+            '<td style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspHook) + '">' + esc(r.inspHook||'-') + '</td>' +
+            '<td style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspPsychology) + '">' + esc(r.inspPsychology||'-') + '</td>' +
+            '<td style="text-align:right;white-space:nowrap">¥' + (r.spend||0).toLocaleString() + '</td>' +
+            '<td style="text-align:right;white-space:nowrap">' + (r.impressions||0).toLocaleString() + '</td>' +
+            '<td style="text-align:right;white-space:nowrap">' + ((r.leads||0).toLocaleString()) + '</td>' +
+            '<td style="text-align:right;white-space:nowrap;font-size:.72rem">' + (r.leads > 0 ? '¥' + Math.round((r.spend||0)/(r.leads||1)).toLocaleString() : '-') + '</td>' +
+            '<td><span style="color:' + effColor[r.effect] + ';font-weight:600;font-size:.78rem">' + (effEmoji[r.effect]||'') + ' ' + esc(r.effect) + '</span></td>' +
+            '</tr>';
+        });
+        repHtml += '</tbody></table></div></div>';
+        body.insertAdjacentHTML('beforeend', repHtml);
+      }
+    }
+  } catch (e) { /* ignore */ }
+
   } catch (err) {
     body.innerHTML = '<div class="empty"><p>❌ 加载失败: ' + err.message + '</p></div>';
   }
