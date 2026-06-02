@@ -101,6 +101,7 @@ function loadDlOpts() {
     const all = [...new Set([...builtin, ...user])];
     dl.innerHTML = all.map(v => `<option value="${esc(v)}">`).join('');
   });
+  renderDlTags();
 }
 
 function saveDlOpt(listId, val) {
@@ -113,7 +114,34 @@ function saveDlOpt(listId, val) {
     localStorage.setItem(DL_KEY, JSON.stringify(saved));
     const dl = document.getElementById(listId);
     if (dl) { const opt = document.createElement('option'); opt.value = val; dl.appendChild(opt); }
+    renderDlTags();
   }
+}
+
+function delDlOpt(listId, val) {
+  const saved = JSON.parse(localStorage.getItem(DL_KEY) || '{}');
+  if (!saved[listId]) return;
+  saved[listId] = saved[listId].filter(function(v) { return v !== val; });
+  localStorage.setItem(DL_KEY, JSON.stringify(saved));
+  loadDlOpts();
+  renderDlTags();
+}
+
+function renderDlTags() {
+  const saved = JSON.parse(localStorage.getItem(DL_KEY) || '{}');
+  ['dlBrand','dlCat','dlVisual','dlPsych'].forEach(function(id) {
+    const container = document.getElementById('ct-' + id);
+    if (!container) return;
+    const items = saved[id] || [];
+    if (!items.length) { container.innerHTML = ''; return; }
+    container.innerHTML = '<span style="font-size:.66rem;color:var(--t5);margin-right:4px">自定义:</span> ' +
+      items.map(function(v) {
+        return '<span style="display:inline-flex;align-items:center;gap:2px;background:var(--bg);border-radius:4px;padding:1px 4px 1px 6px;font-size:.7rem;margin:2px;color:var(--t3)">' +
+          esc(v) +
+          '<span onclick="delDlOpt(\'' + id + '\',\'' + esc(v) + '\')" style="cursor:pointer;color:var(--red);font-weight:700;font-size:.65rem;line-height:1;padding:0 2px">&times;</span>' +
+        '</span>';
+      }).join('');
+  });
 }
 
 // ================================================================
@@ -1783,6 +1811,7 @@ function closeGuide() {
 // ================================================================
 document.addEventListener('DOMContentLoaded', () => {
   loadDlOpts();
+  renderDlTags();
   document.getElementById('fDate').value = td();
   document.getElementById('rfDate').value = td();
   // 首次使用引导
