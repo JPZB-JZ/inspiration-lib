@@ -234,12 +234,22 @@ function saveDlOpt(listId, val) {
 }
 
 function delDlOpt(listId, val) {
-  const saved = JSON.parse(localStorage.getItem(DL_KEY) || '{}');
+  var saved = JSON.parse(localStorage.getItem(DL_KEY) || '{}');
   if (!saved[listId]) return;
+  // Remove from localStorage
   saved[listId] = saved[listId].filter(function(v) { return v !== val; });
   localStorage.setItem(DL_KEY, JSON.stringify(saved));
-  loadDlOpts();
-  renderDlTags();
+  // Remove the matching option from the datalist DOM directly
+  var dl = document.getElementById(listId);
+  if (dl) {
+    var opts = dl.querySelectorAll('option');
+    for (var i = 0; i < opts.length; i++) {
+      if (opts[i].value === val) {
+        opts[i].remove();
+        break;
+      }
+    }
+  }
 }
 
 function renderDlTags() {
