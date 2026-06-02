@@ -6,6 +6,125 @@
 
 
 
+function renderDlTags() {
+  // Replaced by customDropdown system
+}
+
+// ================================================================
+// 自定义下拉框（支持删除选项）
+// ================================================================
+
+const DL_MAP = {
+  'dlBrand': { input: 'fBrand', editInput: 'emBrand' },
+  'dlCat': { input: 'fCat', editInput: 'emCat' },
+  'dlVisual': { input: 'fVisual', editInput: 'emVisual' },
+  'dlPsych': { input: 'fPsych', editInput: 'emPsych' },
+};
+
+let activeDropdown = null;
+
+function initCustomDropdowns() {
+  Object.keys(DL_MAP).forEach(function(dlId) {
+    var m = DL_MAP[dlId];
+    [m.input, m.editInput].forEach(function(inpId) {
+      var inp = document.getElementById(inpId);
+      if (!inp) return;
+      inp.autocomplete = 'off';
+      inp.addEventListener('focus', function() { showDropdown(dlId, inp); });
+      inp.addEventListener('input', function() { showDropdown(dlId, inp); });
+      inp.addEventListener('blur', function() { setTimeout(function() { hideDropdown(); }, 200); });
+      inp.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') hideDropdown();
+        if (e.key === 'Enter') hideDropdown();
+      });
+    });
+  });
+}
+
+function showDropdown(dlId, inputEl) {
+  if (activeDropdown) hideDropdown();
+
+  var datalist = document.getElementById(dlId);
+  if (!datalist) return;
+  var saved = JSON.parse(localStorage.getItem(DL_KEY) || '{}');
+  var customItems = saved[dlId] || [];
+
+  var builtinOptions = [].slice.call(datalist.querySelectorAll('option')).map(function(o) { return o.value; });
+
+  var filter = (inputEl.value || '').trim().toLowerCase();
+
+  // Merge, dedupe, filter
+  var allOptions = [];
+  builtinOptions.forEach(function(v) {
+    if (!filter || v.toLowerCase().includes(filter)) {
+      allOptions.push({ value: v, builtin: true });
+    }
+  });
+  customItems.forEach(function(v) {
+    if (!filter || v.toLowerCase().includes(filter)) {
+      if (!builtinOptions.includes(v)) {
+        allOptions.push({ value: v, builtin: false });
+      }
+    }
+  });
+
+  if (!allOptions.length) return;
+
+  var rect = inputEl.getBoundingClientRect();
+  var dd = document.createElement('div');
+  dd.className = 'custom-dd';
+  dd.style.cssText = 'position:fixed;top:' + (rect.bottom + 4) + 'px;left:' + rect.left + 'px;width:' + rect.width + 'px;max-height:240px;overflow-y:auto;background:var(--card);border:1px solid var(--sep);border-radius:10px;box-shadow:var(--shm);z-index:9999;padding:4px';
+
+  allOptions.forEach(function(opt) {
+    var item = document.createElement('div');
+    item.style.cssText = 'display:flex;align-items:center;gap:4px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:.82rem;color:var(--t1);transition:.05s';
+    item.onmouseenter = function() { item.style.background = 'var(--bg)'; };
+    item.onmouseleave = function() { item.style.background = ''; };
+
+    var label = document.createElement('span');
+    label.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    label.textContent = opt.value;
+    item.appendChild(label);
+
+    if (!opt.builtin) {
+      var delBtn = document.createElement('span');
+      delBtn.textContent = '×';
+      delBtn.style.cssText = 'flex-shrink:0;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:var(--red);font-weight:700;font-size:.8rem;cursor:pointer;opacity:.5;transition:.1s';
+      delBtn.onmouseenter = function() { delBtn.style.background = 'var(--red-bg)'; delBtn.style.opacity = '1'; };
+      delBtn.onmouseleave = function() { delBtn.style.background = ''; delBtn.style.opacity = '.5'; };
+      delBtn.onmousedown = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (confirm('确认删除自定义选项「' + opt.value + '」？')) {
+          delDlOpt(dlId, opt.value);
+          hideDropdown();
+        }
+      };
+      item.appendChild(delBtn);
+    } else {
+      // Builtin - click to select
+      item.onmousedown = function(e) {
+        e.preventDefault();
+        inputEl.value = opt.value;
+        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+        hideDropdown();
+      };
+    }
+
+    dd.appendChild(item);
+  });
+
+  document.body.appendChild(dd);
+  activeDropdown = dd;
+}
+
+function hideDropdown() {
+  if (activeDropdown) {
+    activeDropdown.remove();
+    activeDropdown = null;
+  }
+}
+
 function toggleGroup(el) {
   var body = el.nextElementSibling;
   if (!body) return;
@@ -1812,6 +1931,7 @@ function closeGuide() {
 document.addEventListener('DOMContentLoaded', () => {
   loadDlOpts();
   renderDlTags();
+  initCustomDropdowns();
   document.getElementById('fDate').value = td();
   document.getElementById('rfDate').value = td();
   // 首次使用引导

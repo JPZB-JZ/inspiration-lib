@@ -71,8 +71,8 @@
                 <input class="ios-in" id="fLink" placeholder="粘贴竞品/同行的视频链接（抖音/快手/小红书等）">
               </div>
               <div class="ff"><label>灵感名称 *</label><input class="ios-in" id="fName" placeholder="例：太阳能路灯-安装对比、路锜-暴力测试"></div>
-              <div class="ff"><label>品牌</label><input class="ios-in" id="fBrand" list="dlBrand" placeholder="选品牌或手动输入" onchange="saveDlOpt('dlBrand',this.value)"><div class="dl-custom-tags" id="ct-dlBrand"></div></div>
-              <div class="ff"><label>产品类别</label><input class="ios-in" id="fCat" list="dlCat" placeholder="选品类或手动输入" onchange="saveDlOpt('dlCat',this.value)"><div class="dl-custom-tags" id="ct-dlCat"></div></div>
+              <div class="ff"><label>品牌</label><input class="ios-in" id="fBrand" placeholder="选品牌或手动输入" onchange="saveDlOpt('dlBrand',this.value)"></div>
+              <div class="ff"><label>产品类别</label><input class="ios-in" id="fCat" placeholder="选品类或手动输入" onchange="saveDlOpt('dlCat',this.value)"></div>
             </div>
           </div>
         </div>
@@ -87,7 +87,7 @@
             <div class="fg">
               <div class="ff full">
                 <label>🎨 视觉锤（画面核心特征）</label>
-                <input class="ios-in" id="fVisual" list="dlVisual" placeholder="选常见模式或自己写" onchange="saveDlOpt('dlVisual',this.value)"><div class="dl-custom-tags" id="ct-dlVisual"></div>
+                <input class="ios-in" id="fVisual" placeholder="选常见模式或自己写" onchange="saveDlOpt('dlVisual',this.value)">
                 <div class="ff-hint">常见：安装对比、爆力测试、微观特写、数据对比、场景实拍</div>
               </div>
               <div class="ff full">
@@ -97,7 +97,7 @@
               </div>
               <div class="ff full">
                 <label>🧠 客户心理标签（逗号分隔）</label>
-                <input class="ios-in" id="fPsych" list="dlPsych" placeholder="选标签或手动输入" onchange="saveDlOpt('dlPsych',this.value)"><div class="dl-custom-tags" id="ct-dlPsych"></div>
+                <input class="ios-in" id="fPsych" placeholder="选标签或手动输入" onchange="saveDlOpt('dlPsych',this.value)">
                 <div class="ff-hint">常见：安全焦虑、价格敏感、从众心理、踩坑恐惧、选择粵劳</div>
               </div>
             </div>
@@ -222,11 +222,11 @@
       <div class="fg">
         <div class="ff full"><label>视频链接</label><input class="ios-in" id="emLink"></div>
         <div class="ff"><label>灵感名称 *</label><input class="ios-in" id="emName"></div>
-        <div class="ff"><label>品牌</label><input class="ios-in" id="emBrand" list="dlBrand" onchange="saveDlOpt('dlBrand',this.value)"></div>
-        <div class="ff"><label>产品类别</label><input class="ios-in" id="emCat" list="dlCat" onchange="saveDlOpt('dlCat',this.value)"></div>
-        <div class="ff full"><label>🎨 视觉锤</label><input class="ios-in" id="emVisual" list="dlVisual" onchange="saveDlOpt('dlVisual',this.value)"></div>
+        <div class="ff"><label>品牌</label><input class="ios-in" id="emBrand" onchange="saveDlOpt('dlBrand',this.value)"></div>
+        <div class="ff"><label>产品类别</label><input class="ios-in" id="emCat" onchange="saveDlOpt('dlCat',this.value)"></div>
+        <div class="ff full"><label>🎨 视觉锤</label><input class="ios-in" id="emVisual" onchange="saveDlOpt('dlVisual',this.value)"></div>
         <div class="ff full"><label>💬 文案钩子</label><input class="ios-in" id="emHook"></div>
-        <div class="ff full"><label>🧠 心理标签</label><input class="ios-in" id="emPsych" list="dlPsych" onchange="saveDlOpt('dlPsych',this.value)"></div>
+        <div class="ff full"><label>🧠 心理标签</label><input class="ios-in" id="emPsych" onchange="saveDlOpt('dlPsych',this.value)"></div>
         <div class="ff"><label>日期</label><input type="text" class="ios-in mono" id="emDate" placeholder="年-月-日" readonly onclick="openDatePicker('emDate')"></div>
         <div class="ff"><label>投手备注</label><input class="ios-in" id="emNote"></div>
       </div>
