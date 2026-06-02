@@ -241,15 +241,32 @@ function dpSelect(day) { if (!dpTarget) return; dpTarget.value = dpY + '-' + Str
 function toggleSidebar() { document.querySelector('.sb').classList.toggle('open'); }
 
 async function go(tab) {
-  document.querySelectorAll('.tab').forEach(s => s.classList.remove('on'));
-  document.getElementById('t-' + tab).classList.add('on');
-  document.querySelectorAll('.sbn').forEach(b => b.classList.remove('on'));
-  const sbn = document.querySelector(`.sbn[data-t="${tab}"]`);
+  var cur = document.querySelector('.tab.on');
+  if (cur) {
+    gsap.to(cur, { opacity: 0, y: -8, duration: 0.12, ease: 'power1.out', onComplete: function() {
+      cur.classList.remove('on');
+      cur.style.opacity = '';
+      cur.style.transform = '';
+      var next = document.getElementById('t-' + tab);
+      if (next) {
+        next.classList.add('on');
+        gsap.fromTo(next, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out' });
+      }
+    }});
+  } else {
+    var next = document.getElementById('t-' + tab);
+    if (next) {
+      next.classList.add('on');
+      gsap.fromTo(next, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out' });
+    }
+  }
+  document.querySelectorAll('.sbn').forEach(function(b) { b.classList.remove('on'); });
+  var sbn = document.querySelector('.sbn[data-t="' + tab + '"]');
   if (sbn) sbn.classList.add('on');
-  document.querySelectorAll('.bnb').forEach(b => b.classList.remove('on'));
-  const bnb = document.querySelector(`.bnb[data-t="${tab}"]`);
+  document.querySelectorAll('.bnb').forEach(function(b) { b.classList.remove('on'); });
+  var bnb = document.querySelector('.bnb[data-t="' + tab + '"]');
   if (bnb) bnb.classList.add('on');
-  if (window.innerWidth <= 860) { const sb = document.querySelector('.sb'); if (sb) sb.classList.remove('open'); }
+  if (window.innerWidth <= 860) { var sb = document.querySelector('.sb'); if (sb) sb.classList.remove('open'); }
   if (tab === 'lib') await renderLib();
   if (tab === 'stats') await renderStats();
   if (tab === 'ai') await renderAI();
@@ -508,7 +525,7 @@ async function renderLib() {
     pgNext.disabled = curPage >= maxPage;
   } else pgBar.style.display = 'none';
 
-  list.innerHTML = '<div class="mc-grid">' + data.map(d => {
+  var frag = '<div class="mc-grid">' + data.map(d => {
     const stMap = { '待复刻':'s-待复刻','已验证':'s-已验证','淘汰':'s-淘汰' };
     const sc = stMap[d.status] || 's-待复刻';
     const reps = d.replications || [];
@@ -911,6 +928,17 @@ async function renderStats() {
       const ctx = document.getElementById('chart-eff').getContext('2d');
       charts.eff = new Chart(ctx, { type:'doughnut', data:{ labels:effLabels, datasets:[{ data:effLabels.map(l=>d.effCounts[l]), backgroundColor:effLabels.map(l=>effColors[l]||'#8E8E93'), borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ padding:10, font:{ size:11 } } } } } });
     }
+  var mvs = document.querySelectorAll('#t-stats .metric .mv');
+  mvs.forEach(function(el) {
+    var val = parseFloat(el.textContent.replace(/[^0-9.-]/g, '')) || 0;
+    if (val > 0) {
+      var obj = { v: 0 };
+      gsap.to(obj, { v: val, duration: 0.6, ease: 'power2.out', onUpdate: function() {
+        el.textContent = val >= 1 ? Math.round(obj.v) : obj.v.toFixed(1);
+      }});
+    }
+  });
+
     if (d.visual && d.visual.length) {
       const ctx = document.getElementById('chart-vis-rank').getContext('2d');
       const top = d.visual.slice(0, 6);
@@ -958,7 +986,8 @@ function renderAIResult(reply) {
   var paoMianInsp = DATA.filter(function(d) { return (d.replications||[]).some(function(r) { return r.effect === '跑量'; }); }).length;
   var formatted = reply.replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^(\d+\.\s)/gm,'<br>$1');
 
-  body.innerHTML = '<div class="exec-card" style="background:linear-gradient(135deg,#007AFF,#5856D6)">'
+  body.innerHTML = '';
+  var aiCard = '<div class="exec-card" style="background:linear-gradient(135deg,#007AFF,#5856D6)">'
     + '<div class="el">🤖 DeepSeek AI 深度分析</div>'
     + '<div class="ev" style="font-size:.88rem;font-weight:500">' + formatted + '</div>'
     + '</div>'
@@ -1119,12 +1148,12 @@ function showGuide() {
   modal.className = 'modal';
   modal.innerHTML = h;
   document.body.appendChild(modal);
-  requestAnimationFrame(function() { modal.querySelector('.guide-card').classList.add('show'); });
+  gsap.fromTo('.guide-card', { opacity: 0, scale: 0.9, y: 20 }, { opacity: 1, scale: 1, y: 0, duration: 0.3, ease: 'back.out(1.4)' });
 }
 
 function closeGuide() {
   var m = document.querySelector('.modal');
-  if (m) m.remove();
+  if (m) { gsap.to('.guide-card', { opacity: 0, scale: 0.9, y: -10, duration: 0.15, ease: 'power1.in', onComplete: function() { m.remove(); } }); }
 }
 
 // ================================================================
