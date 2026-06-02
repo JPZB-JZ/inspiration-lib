@@ -41,3 +41,14 @@ CREATE INDEX idx_material_id ON replications(material_id);
 
 -- v2.1 migration: 获线索数
 ALTER TABLE replications ADD COLUMN leads INT DEFAULT 0 COMMENT '获线索数';
+
+
+-- v2.2 migration: AI分析报告
+CREATE TABLE IF NOT EXISTS ai_reports (
+  id VARCHAR(36) PRIMARY KEY,
+  title VARCHAR(255) DEFAULT '' COMMENT '报告标题',
+  content TEXT COMMENT 'AI分析结果全文',
+  suggestions TEXT COMMENT '拍摄建议部分（结构化）',
+  data_snapshot TEXT COMMENT '生成时的数据快照JSON',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI分析报告';

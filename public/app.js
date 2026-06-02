@@ -1169,6 +1169,218 @@ async function renderSuggestions() {
 
 
 
+
+// ================================================================
+// AI 分析报告中心
+// ================================================================
+
+let aiReports = [];
+let curReportId = null;
+let aiGenerating = false;
+
+async function renderAI() {
+  const hub = document.getElementById('aiHub');
+  if (!hub) return;
+
+  hub.innerHTML = '<div style="display:flex;gap:16px;align-items:flex-start;min-height:70vh">' +
+    '<div id="aiSidebar" style="width:220px;flex-shrink:0;min-height:calc(100vh - 100px);background:var(--card);border-radius:var(--r);box-shadow:var(--sh);display:flex;flex-direction:column">' +
+      '<div style="padding:16px 14px 12px;border-bottom:1px solid var(--sep-l)">' +
+        '<div style="font-size:.82rem;font-weight:700;color:var(--t3)">🤖 分析记录</div>' +
+        '<div style="font-size:.66rem;color:var(--t5);margin-top:2px">已保存的AI分析报告</div>' +
+      '</div>' +
+      '<div id="aiReportList" style="flex:1;overflow-y:auto;padding:8px 6px">' +
+        '<div class="empty" style="padding:30px 16px"><p style="font-size:.78rem">⏳ 加载中…</p></div>' +
+      '</div>' +
+    '</div>' +
+    '<div id="aiMain" style="flex:1;min-width:0">' +
+      '<div class="card" style="padding:40px;text-align:center">' +
+        '<div class="ei" style="font-size:3rem">🤖</div>' +
+        '<p style="font-weight:700;font-size:1rem;margin:8px 0 4px">AI 分析报告</p>' +
+        '<p style="font-size:.82rem;color:var(--t4);margin-bottom:16px">基于库中的复刻数据，生成策略级分析和拍摄建议</p>' +
+        '<button class="btn-m" onclick="generateAIReport()" style="padding:12px 32px;font-size:.95rem">✨ 生成新分析</button>' +
+        '<p style="font-size:.72rem;color:var(--t5);margin-top:8px">分析会保存在历史记录中，可随时翻阅</p>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  await loadAIReports();
+}
+
+async function loadAIReports() {
+  try {
+    var res = await fetch('/inspiration/api/ai/reports');
+    if (!res.ok) throw new Error('加载失败');
+    aiReports = await res.json();
+
+    var listEl = document.getElementById('aiReportList');
+    if (!listEl) return;
+
+    if (!aiReports.length) {
+      listEl.innerHTML = '<div style="padding:30px 14px;text-align:center"><p style="font-size:.78rem;color:var(--t4)">还没有分析报告</p><p style="font-size:.7rem;color:var(--t5)">点击「生成新分析」创建第一份</p></div>';
+      return;
+    }
+
+    listEl.innerHTML = aiReports.map(function(r) {
+      var isActive = curReportId === r.id;
+      var dateStr = r.createdAt ? r.createdAt.slice(0, 10) : '';
+      return '<div class="ai-rep-item' + (isActive ? ' on' : '') + '" data-id="' + r.id + '" onclick="loadAIReport(\'' + r.id + '\')" style="padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:2px;transition:.1s;' + (isActive ? 'background:var(--blue-bg)' : '') + '">' +
+        '<div style="font-size:.78rem;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(r.title || 'AI分析') + '</div>' +
+        '<div style="font-size:.66rem;color:var(--t5);margin-top:2px">' + dateStr + '</div>' +
+      '</div>';
+    }).join('');
+  } catch (err) {
+    console.warn('loadAIReports error:', err);
+  }
+}
+
+async function generateAIReport() {
+  if (aiGenerating) return;
+  aiGenerating = true;
+
+  var mainEl = document.getElementById('aiMain');
+  if (!mainEl) return;
+
+  mainEl.innerHTML = '<div class="card" style="padding:50px;text-align:center">' +
+    '<p style="font-size:.9rem;color:var(--t4)">🤖 AI 正在分析数据…</p>' +
+    '<p style="font-size:.72rem;color:var(--t5);margin-top:6px">根据所有复刻记录生成策略建议（约15-30秒）</p>' +
+    '<div style="margin-top:16px;width:200px;height:4px;background:var(--sep);border-radius:4px;overflow:hidden;margin-left:auto;margin-right:auto">' +
+      '<div style="width:30%;height:100%;background:var(--blue);border-radius:4px;animation:aiLoad 1.2s ease infinite"></div>' +
+    '</div>' +
+  '</div>';
+
+  try {
+    var res = await fetch('/inspiration/api/ai/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body: '{}' });
+    if (!res.ok) throw new Error('生成失败');
+    var data = await res.json();
+
+    curReportId = data.id;
+    await loadAIReports();
+    await displayAIReport(data);
+  } catch (err) {
+    mainEl.innerHTML = '<div class="card" style="padding:40px;text-align:center">' +
+      '<p style="color:var(--red)">❌ 生成失败: ' + err.message + '</p>' +
+      '<button class="btn-m" onclick="generateAIReport()" style="margin-top:12px">重试</button>' +
+    '</div>';
+  } finally {
+    aiGenerating = false;
+  }
+}
+
+async function loadAIReport(id) {
+  if (aiGenerating) return;
+  try {
+    var res = await fetch('/inspiration/api/ai/reports/' + id);
+    if (!res.ok) throw new Error('加载失败');
+    var data = await res.json();
+    curReportId = id;
+    await loadAIReports();
+    await displayAIReport(data);
+  } catch (err) {
+    toast('加载报告失败: ' + err.message, 'err');
+  }
+}
+
+async function displayAIReport(data) {
+  var mainEl = document.getElementById('aiMain');
+  if (!mainEl) return;
+
+  // Parse the content into sections
+  var content = data.content || '';
+  var sections = content.split(/\n(?=\d+\.\s|##)/);
+
+  // Extract key metrics from data snapshot if available, or from the content
+  var metricsHtml = '<div class="metrics">' +
+    '<div class="metric"><div class="mv">' + (DATA ? DATA.length : '-') + '</div><div class="ml">总灵感</div></div>' +
+    '<div class="metric g"><div class="mv">' + (DATA ? DATA.flatMap(function(d){return d.replications||[];}).length : '-') + '</div><div class="ml">复刻次数</div></div>' +
+    '<div class="metric o"><div class="mv">' + (DATA ? DATA.filter(function(d){return (d.replications||[]).some(function(r){return r.effect==="跑量";});}).length : '-') + '</div><div class="ml">跑通灵感</div></div>' +
+    '<div class="metric"><div class="mv">' + (DATA ? DATA.filter(function(d){return d.status==="待复刻";}).length : '-') + '</div><div class="ml">待复刻</div></div>' +
+  '</div>';
+
+  // Split analysis content into data analysis and shooting suggestions
+  var analysisHtml = '';
+  var suggestHtml = '';
+
+  var lines = content.split('\n');
+  var inSuggest = false;
+  var analysisLines = [];
+  var suggestLines = [];
+
+  lines.forEach(function(line) {
+    var lower = line.toLowerCase();
+    if (lower.includes('行动建议') || lower.includes('拍摄建议') || lower.includes('下一步') || lower.includes('建议重仓') || lower.includes('建议放弃')) {
+      inSuggest = true;
+      suggestLines.push('');
+      suggestLines.push(line);
+    } else if (lower.includes('数据概况') || lower.includes('已验证') || lower.includes('待验证') || lower.includes('放弃方向')) {
+      inSuggest = false;
+    }
+
+    if (inSuggest) {
+      suggestLines.push(line);
+    } else {
+      analysisLines.push(line);
+    }
+  });
+
+  var formatBlock = function(arr) {
+    return arr.map(function(l) {
+      l = esc(l)
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^#+ /gm, '')
+        .replace(/^- /gm, '<br>• ');
+      return l;
+    }).join('<br>');
+  };
+
+  analysisHtml = analysisLines.length > 10 ? formatBlock(analysisLines) : formatBlock(lines);
+  suggestHtml = suggestLines.length > 3 ? formatBlock(suggestLines) : '';
+
+  var html = '';
+
+  // Top bar with actions
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">';
+  html += '<span style="font-weight:700;font-size:.9rem;flex:1">' + esc(data.title || 'AI分析报告') + '</span>';
+  html += '<span style="font-size:.72rem;color:var(--t4)">' + (data.createdAt ? data.createdAt.slice(0, 16).replace('T', ' ') : '') + '</span>';
+  html += '<button class="btn-m" onclick="generateAIReport()" style="padding:8px 18px;font-size:.8rem">✨ 重新生成</button>';
+  html += '</div>';
+
+  // Metrics
+  html += metricsHtml;
+
+  // Data analysis section
+  html += '<div class="card">';
+  html += '<div class="card-h" style="border-bottom:1px solid var(--sep-l);padding-bottom:12px">📊 数据分析</div>';
+  html += '<div style="padding:16px 20px;line-height:1.8;font-size:.85rem">' + analysisHtml + '</div>';
+  html += '</div>';
+
+  // Shooting suggestions section (if found)
+  if (suggestHtml) {
+    html += '<div class="card" style="border-left:4px solid var(--orange)">';
+    html += '<div class="card-h" style="border-bottom:1px solid var(--sep-l);padding-bottom:12px">🎯 拍摄建议</div>';
+    html += '<div style="padding:16px 20px;line-height:1.8;font-size:.85rem">' + suggestHtml + '</div>';
+    html += '</div>';
+  }
+
+  mainEl.innerHTML = html;
+
+  // Number animation
+  var mvs = mainEl.querySelectorAll('.metric .mv');
+  mvs.forEach(function(el) {
+    var val = parseInt(el.textContent.replace(/[^0-9-]/g,'')) || 0;
+    if (val > 0) {
+      var obj = { v: 0 };
+      gsap.to(obj, { v: val, duration: 0.6, ease: 'power2.out', onUpdate: function() {
+        el.textContent = Math.round(obj.v);
+      }});
+    }
+  });
+}
+
+// Add animation keyframe
+var style = document.createElement('style');
+style.textContent = '@keyframes aiLoad { 0%{width:10%;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:10%;margin-left:90%} }';
+document.head.appendChild(style);
+
 async function renderStats() {
   if (statsView === 'replication') {
     await renderRepDashboard();

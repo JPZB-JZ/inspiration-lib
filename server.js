@@ -570,6 +570,15 @@ app.post('/api/ai/analyze', async (req, res) => {
       ).join('\n');
     }
 
+    // 获取待复刻灵感，给AI做拍摄建议
+    const pending = data.filter(d => d.status === '待复刻');
+    let pendingText = '暂无待复刻灵感';
+    if (pending.length > 0) {
+      pendingText = pending.map(d =>
+        `- 「${d.name}」| 品牌:${d.brand||'-'} | 品类:${d.category||'-'} | 视觉锤:${d.visual||'-'} | 文案钩子:${d.hook||'-'} | 心理标签:${d.psychology||'-'} | 采集:${d.date||'-'}`
+      ).join('\n');
+    }
+
     const systemPrompt = `你是一个专业的投手策略分析师。职责是根据竞品素材的复刻追踪数据输出可执行的投放策略建议。
 
 数据来源：团队搜集的竞品素材（视觉锤/文案钩子/心理标签），以及在抖音/快手等平台复刻投放后的效果数据。
@@ -577,12 +586,12 @@ app.post('/api/ai/analyze', async (req, res) => {
 每条复刻记录包含：
 - 来源灵感名称、品牌、品类
 - 来源灵感的视觉锤（画面特征）、文案钩子（开场话术）、心理标签（客户心理触发点）
-- 复刻投放效果（跑量/一般/无效果）、消耗金额、展示量、投手笔记
+- 复刻投放效果（跑量/一般/无效果）、消耗金额、展示量、获线索数、投手笔记
 
 分析要求：
-1. 评估当前素材库中哪些方向经过了数据验证——哪些视觉锤×心理标签的组合有实际跑量记录，结合消耗和展示量判断性价比
+1. 评估当前素材库中哪些方向经过了数据验证——哪些视觉锤×心理标签的组合有实际跑量记录，结合消耗和线索成本判断性价比
 2. 识别有潜力但尚未验证的方向，以及需要放弃的无效方向
-3. 给出下一步具体行动建议：复制什么、拍摄什么、测试什么
+3. 基于「待复刻灵感」列表和已验证的数据，给出具体的拍摄优先级建议——先拍哪个、后拍哪个、为什么
 4. 如果有投手笔记中的发现，纳入分析
 
 输出规范：
@@ -590,7 +599,9 @@ app.post('/api/ai/analyze', async (req, res) => {
 - 每条结论附上数据依据
 - 没有数据时不强行结论，说明数据不足即可
 - 语言简洁、准确、中性，像一份分析报告
-- 按「数据概况→已验证的有效方向→待验证方向→放弃方向→行动建议」的顺序组织`;
+- 输出必须分为两大块：
+  「## 📊 数据分析」：数据概况→已验证方向→待验证方向→放弃方向
+  「## 🎯 拍摄建议」：基于待复刻灵感和历史数据，给出具体的拍摄优先级和理由`;
 
     const userPrompt = `## 数据概况
 
@@ -615,7 +626,16 @@ ${repDetailText}`;
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ], key);
-    res.json({ reply });
+
+    // 保存报告
+    const reportId = 'ai_' + uid();
+    const title = 'AI分析 ' + new Date().toISOString().slice(0, 10) + ' (' + replDetails.length + '条复刻)';
+    await pool.query(
+      'INSERT INTO ai_reports (id, title, content, suggestions, data_snapshot) VALUES (?,?,?,?,?)',
+      [reportId, title, reply, '', userPrompt]
+    );
+
+    res.json({ id: reportId, content: reply, createdAt: new Date().toISOString() });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -642,6 +662,42 @@ function callDeepSeek(messages, apiKey) {
     req.end();
   });
 }
+
+
+
+// ================================================================
+// AI 报告管理 API
+// ================================================================
+
+app.get('/api/ai/reports', async (req, res) => {
+  try {
+    const [reports] = await pool.query(
+      'SELECT id, title, created_at FROM ai_reports ORDER BY created_at DESC LIMIT 50'
+    );
+    res.json(reports.map(r => ({
+      id: r.id, title: r.title,
+      createdAt: r.created_at ? r.created_at.toISOString() : '',
+    })));
+  } catch (err) {
+    res.status(500).json({ error: '查询失败: ' + err.message });
+  }
+});
+
+app.get('/api/ai/reports/:id', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM ai_reports WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: '报告不存在' });
+    const r = rows[0];
+    res.json({
+      id: r.id, title: r.title, content: r.content,
+      suggestions: r.suggestions || '',
+      dataSnapshot: r.data_snapshot ? JSON.parse(r.data_snapshot) : null,
+      createdAt: r.created_at ? r.created_at.toISOString() : '',
+    });
+  } catch (err) {
+    res.status(500).json({ error: '查询失败: ' + err.message });
+  }
+});
 
 // ================================================================
 // 登录页 HTML
