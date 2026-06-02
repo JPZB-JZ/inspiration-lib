@@ -208,10 +208,7 @@ body{font-family:'Noto Sans SC',-apple-system,sans-serif;background:var(--bg);co
 .lib-count{font-size:.73rem;color:var(--t4);font-weight:600;white-space:nowrap}
 
 /* 卡片网格 — 核心 */
-.ml{display:grid;grid-template-columns:1fr;gap:10px}
-@media(min-width:1000px){.ml{grid-template-columns:1fr 1fr}}
-@media(min-width:1400px){.ml{grid-template-columns:1fr 1fr 1fr}}
-@media(min-width:1800px){.ml{grid-template-columns:1fr 1fr 1fr 1fr}}
+.ml{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
 
 .mc{
   background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:14px 18px;
@@ -391,11 +388,9 @@ body{font-family:'Noto Sans SC',-apple-system,sans-serif;background:var(--bg);co
    ================================================================ */
 
 @media(max-width:1099px){
-  .ml{grid-template-columns:1fr 1fr}
   .ch-row.three{grid-template-columns:1fr 1fr}
 }
 @media(max-width:860px){
-  .ml{grid-template-columns:1fr}
   .fg{grid-template-columns:1fr 1fr}
   .ch-row,.ch-row.three{grid-template-columns:1fr}
   .metrics{grid-template-columns:1fr 1fr}
@@ -502,7 +497,7 @@ body{font-family:'Noto Sans SC',-apple-system,sans-serif;background:var(--bg);co
   padding-top: 4px;
   border-top: 1px solid var(--sep-l);
 }/* 灵感库卡片增强 */
-.mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
 @media(max-width:700px){.mc-grid{grid-template-columns:1fr}}
 
 .mc-link-row{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--t4);margin-bottom:6px}
