@@ -24,6 +24,16 @@ function searchAndGo(query) {
   curPage = 1;
   go('lib');
 }
+
+
+function searchAndGo(query) {
+  var inp = document.getElementById('sS');
+  if (inp) inp.value = query;
+  var allBtn = document.querySelector('.pg .fp[onclick*="all"]');
+  if (allBtn) allBtn.click();
+  curPage = 1;
+  go('lib');
+}
 function toggleTheme() {
   var html = document.documentElement;
   var isDark = html.getAttribute(data-theme) === dark;
@@ -521,6 +531,65 @@ async function doExport() {
   XLSX.utils.book_append_sheet(wb, ws2, '复刻记录');
   XLSX.writeFile(wb, '灵感库_'+td()+'.xlsx');
   toast('Excel 导出成功 ✅', 'ok');
+
+
+  // Trend: monthly replication data
+  var allReps = [];
+  DATA.forEach(function(d) { (d.replications||[]).forEach(function(r) { allReps.push({date:r.date, effect:r.effect, name:d.name, visual:d.visual, brand:d.brand}); }); });
+  allReps.sort(function(a,b) { return (a.date||'').localeCompare(b.date||''); });
+
+  if (allReps.length > 0) {
+    var monthMap = {};
+    allReps.forEach(function(r) {
+      if (!r.date) return;
+      var m = r.date.substring(0,7);
+      if (!monthMap[m]) monthMap[m] = {total:0, pao:0};
+      monthMap[m].total++;
+      if (r.effect === '跑量') monthMap[m].pao++;
+    });
+    var months = Object.keys(monthMap).sort();
+    if (months.length > 0) {
+      var trendHtml = '<div class="card"><div class="card-h">\uD83D\uDCC8 \u8D8B\u52BF\u5206\u6790 <span style="font-weight:400;font-size:.75rem;color:var(--t4);margin-left:8px">\u6309\u6708\u590D\u523B\u8D8B\u52BF</span></div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u6708\u4EFD</th><th>\u590D\u523B\u6B21\u6570</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
+      months.forEach(function(m) {
+        var d = monthMap[m];
+        var rate = d.total > 0 ? (d.pao/d.total*100).toFixed(0) : 0;
+        trendHtml += '<tr><td>'+m+'</td><td>'+d.total+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
+      });
+      trendHtml += '</tbody></table></div></div>';
+      body.insertAdjacentHTML('beforeend', trendHtml);
+    }
+  }
+
+  // Brand analysis
+  var brandMap = {};
+  DATA.forEach(function(d) {
+    var b = (d.brand || '\u672A\u77E5').trim();
+    if (!brandMap[b]) brandMap[b] = {total:0, reps:0, pao:0};
+    brandMap[b].total++;
+    (d.replications||[]).forEach(function(r) {
+      brandMap[b].reps++;
+      if(r.effect==='\u8dd1\u91cf') brandMap[b].pao++;
+    });
+  });
+  var brandSorted = Object.keys(brandMap).filter(function(b) { return brandMap[b].reps > 0; }).sort(function(a,b) { return brandMap[b].reps - brandMap[a].reps; });
+  if (brandSorted.length > 0) {
+    var brandHtml = '<div class="card"><div class="card-h">\uD83C\uDFF7 \u54C1\u724C\u8868\u73B0</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u54C1\u724C</th><th>\u7075\u611F\u6570</th><th>\u590D\u523B</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
+    brandSorted.forEach(function(b) {
+      var d = brandMap[b];
+      var rate = d.reps > 0 ? (d.pao/d.reps*100).toFixed(0) : 0;
+      brandHtml += '<tr><td><strong>'+esc(b)+'</strong></td><td>'+d.total+'</td><td>'+d.reps+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
+    });
+    brandHtml += '</tbody></table></div></div>';
+    body.insertAdjacentHTML('beforeend', brandHtml);
+  }
+
+  // AI analysis section
+  var sep = document.createElement('div');
+  sep.style.cssText = 'margin-top:28px;text-align:center';
+  sep.innerHTML = '<div style="border-top:1px solid var(--sep-l);padding-top:24px;margin-bottom:8px">'
+    + '<div style="font-size:.82rem;color:var(--t4);margin-bottom:16px">让 AI 根据当前数据分析策略方向</div>'
+    + '<button class="btn-m" style="font-size:1rem;padding:14px 36px" onclick="startAIAnalysis()">U0001f916 AI 深度解析</button></div>';
+  body.appendChild(sep);
 }
 
 // ================================================================
@@ -754,6 +823,55 @@ async function loadSample() {
 // 初始化
 // ================================================================
 
+
+
+//
+// 首次使用引导
+//
+
+function showGuide() {
+  if (localStorage.getItem('inspiration_guide_done')) return;
+  localStorage.setItem('inspiration_guide_done', '1');
+
+  var steps = [
+    { ic: String.fromCodePoint(0x1f50d), title: '采集灵感', desc: '在「录入」页面粘贴竞品/同行的视频链接，标注视觉锤、文案钩子、客户心理标签，给投手团队沉淀可复制的创意素材。' },
+    { ic: String.fromCodePoint(0x1f4da), title: '管理灵感库', desc: '在「灵感库」浏览所有采集的素材，添加复刻记录（投放链接、消耗、跑量效果）。好灵感直接拿去拍，拍完回来记结果。' },
+    { ic: String.fromCodePoint(0x1f4ca), title: '看板分析', desc: '「看板」自动统计视觉锤成功率、心理标签转化率、最佳组合。一眼看清哪种视觉×哪种话术最容易跑量，指导下一步拍摄方向。' },
+    { ic: String.fromCodePoint(0x1f916), title: 'AI 深度分析', desc: '「AI 分析」调用 DeepSeek 对数据做策略级解读：哪些方向值得重仓、哪些该放弃，像有经验的老投手在带你。' },
+  ];
+
+  var h = '<div class="modal-overlay" onclick="closeGuide()"></div>';
+  h += '<div class="guide-card">';
+  h += '<div class="guide-h"><span class="guide-emoji">\u2728</span> 欢迎使用灵感库</div>';
+  h += '<div class="guide-sub">采集竞品素材 \u2192 复刻验证 \u2192 沉淀经验，三步跑通爆量模式</div>';
+  h += '<div class="guide-steps">';
+  for (var i = 0; i < steps.length; i++) {
+    var s = steps[i];
+    h += '<div class="guide-step">';
+    h += '<div class="guide-step-num">' + (i + 1) + '</div>';
+    h += '<div class="guide-step-body">';
+    h += '<div class="guide-step-h"><span class="guide-step-ic">' + s.ic + '</span> ' + s.title + '</div>';
+    h += '<div class="guide-step-d">' + s.desc + '</div>';
+    h += '</div></div>';
+  }
+  h += '</div>';
+  h += '<div class="guide-act"><button class="btn-m" onclick="closeGuide()">知道了，开始使用 \u2192</button></div>';
+
+  var modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = h;
+  document.body.appendChild(modal);
+  requestAnimationFrame(function() { modal.querySelector('.guide-card').classList.add('show'); });
+}
+
+function closeGuide() {
+  var m = document.querySelector('.modal');
+  if (m) m.remove();
+}
+
+// ================================================================
+// 初始化
+// ================================================================
 
 
 //
