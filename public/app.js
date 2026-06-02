@@ -770,10 +770,6 @@ async function renderStats() {
         </table></div>
       </div>` : ''}
     : ''}
-    <div style="text-align:center;padding:12px 0 8px">
-      <button class="btn-m" style="font-size:.92rem;padding:10px 28px" onclick="startAIAnalysis()">🤖 AI 深度解析</button>
-      <p style="font-size:.72rem;color:var(--t4);margin-top:6px;margin-bottom:0">根据当前库里的数据进行策略分析</p>
-    </div>
   `;
 
     Object.values(charts).forEach(c => { try { c.destroy(); } catch(e) {} });
