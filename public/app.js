@@ -201,6 +201,8 @@ let editingReplId = null;
 let rfEff = '跑量';
 let curPage = 1;
 let statsView = 'analysis';
+let selectedIds = {};
+let selectAllMode = false;
 const PAGE_SIZE = 20;
 
 // ============ 下拉建议管理 ============
@@ -599,6 +601,27 @@ async function delReplication(inspId, replId) {
 function loadLibData() {
   if (!DATA) return [];
   let data = [...DATA];
+  // 批处理条
+  var batchBar = document.getElementById('batchBar');
+  if (!batchBar) {
+    batchBar = document.createElement('div');
+    batchBar.id = 'batchBar';
+    batchBar.style.cssText = 'display:none;align-items:center;gap:8px;padding:10px 14px;background:var(--blue-bg);border-radius:10px;margin-bottom:10px';
+    document.getElementById('libList').parentNode.insertBefore(batchBar, document.getElementById('libList'));
+  }
+  var selCount = Object.keys(selectedIds).length;
+  if (selCount > 0) {
+    batchBar.style.display = 'flex';
+    batchBar.innerHTML = '<span style="font-weight:600;font-size:.82rem;color:var(--blue)">已选 ' + selCount + ' 条</span>' +
+      '<button class="btn-sm" onclick="batchSetStatus(\'已验证\')" style="padding:4px 12px;font-size:.72rem">✅ 已验证</button>' +
+      '<button class="btn-sm" onclick="batchSetStatus(\'淘汰\')" style="padding:4px 12px;font-size:.72rem;background:var(--t4)">🗑️ 淘汰</button>' +
+      '<button class="btn-sm" onclick="batchSetStatus(\'待复刻\')" style="padding:4px 12px;font-size:.72rem;background:var(--orange)">📋 待复刻</button>' +
+      '<button onclick="batchDelete()" style="margin-left:auto;padding:4px 10px;border:none;border-radius:6px;background:var(--red-bg);color:var(--red);font-family:inherit;font-weight:600;font-size:.72rem;cursor:pointer">✕ 删除</button>' +
+      '<button onclick="selectedIds={};renderLib()" style="padding:4px 8px;border:none;border-radius:6px;background:transparent;color:var(--t4);font-family:inherit;font-size:.72rem;cursor:pointer">取消</button>';
+  } else {
+    batchBar.style.display = 'none';
+  }
+
   const search = document.getElementById('sS')?.value?.trim().toLowerCase();
   const brand = document.getElementById('sB')?.value?.trim().toLowerCase();
   if (search) {
@@ -660,7 +683,7 @@ async function renderLib() {
     if (repCount > 0) effTags = Object.entries(effCount).filter(([k,v])=>v>0).map(([k,v])=>`<span class="eff eff-${k}">${k} ${v}</span>`).join('');
 
     return `<div class="mc">
-      <div class="mc-top"><div class="mc-n">${esc(d.name)}</div><div class="mc-st ${sc}">${d.status}</div></div>
+      <div class="mc-top"><input type="checkbox" class="mc-cb" ${selectedIds[d.id] ? 'checked' : ''} onclick="toggleSelect('${d.id}')" style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;margin-right:4px"><div class="mc-n">${esc(d.name)}</div><div class="mc-st ${sc}">${d.status}</div></div>
       ${d.link ? (function(){var m=d.link.match(/https?:\/\/([^\/]+)/);var dom=m?m[1]:'';return '<div class="mc-link-row"><span class="fav">🔗</span><a href="'+esc(extractUrl(d.link))+'" target="_blank">点击查看原视频</a></div>'})() : ''}
       <div class="mc-visual">${d.visual ? '<span class="vtag"><span class="vico">🎨</span>'+esc(d.visual)+'</span>' : ''}${d.hook ? '<span class="vtag"><span class="vico">💬</span>'+esc(d.hook)+'</span>' : ''}</div>
       <div class="mc-tg">${d.brand ? '<span class="tg"><span class="tl">品牌</span>'+esc(d.brand)+'</span>' : ''}${d.category ? '<span class="tg"><span class="tl">品类</span>'+esc(d.category)+'</span>' : ''}</div>
@@ -677,7 +700,7 @@ async function renderLib() {
           const emoji = {'跑量':'✅','一般':'👌','无效果':'❌'};
           return `<div class="repl-item">
             <div class="repl-top"><span class="repl-eff eff-${r.effect}">${emoji[r.effect]||'👌'} ${r.effect}</span><span class="repl-date">${r.date||'-'}</span><button class="repl-del" onclick="delReplication('${d.id}','${r.id}')">✕</button></div>
-            <div class="repl-row">${r.link ? '<span class="repl-link" onclick="window.open(\''+esc(r.link)+'\',\'_blank\')">🔗 视频</span>' : ''}<span>💰 ¥${(r.spend||0).toLocaleString()}</span><span>👁️ ${(r.impressions||0).toLocaleString()}</span><button class="repl-edit" onclick="editReplication('${d.id}','${r.id}')" style="margin-left:auto;padding:2px 8px;border:none;background:var(--bg);border-radius:6px;cursor:pointer;font-size:.7rem">✏️</button></div>
+            <div class="repl-row">${r.link ? '<span class="repl-link" onclick="window.open(\''+esc(r.link)+'\',\'_blank\')">🔗 视频</span>' : ''}<span>💰 ¥${(r.spend||0).toLocaleString()}</span><span>👁️ ${(r.impressions||0).toLocaleString()}</span><span>📞 ${r.leads||0}线索</span><span>${r.leads > 0 ? '¥'+Math.round((r.spend||0)/(r.leads||1)).toLocaleString()+'/线索' : ''}</span><button class="repl-edit" onclick="editReplication('${d.id}','${r.id}')" style="margin-left:auto;padding:2px 8px;border:none;background:var(--bg);border-radius:6px;cursor:pointer;font-size:.7rem">✏️</button></div>
             ${r.notes ? '<div class="repl-notes">📝 '+esc(r.notes)+'</div>' : ''}
           </div>`;
         }).join('')}
@@ -714,8 +737,69 @@ function onSearch() { curPage = 1; renderLib(); }
 function goPage(dir) { const allData = loadLibData(); const maxPage = Math.max(1, Math.ceil(allData.length/PAGE_SIZE)); curPage = Math.max(1, Math.min(maxPage, curPage+dir)); renderLib(); window.scrollTo({top: document.getElementById('libList').offsetTop-80, behavior:'smooth'}); }
 function setF(btn, val) { fSt = val; curPage = 1; document.querySelectorAll('.pg .fp').forEach(b => b.classList.remove('on')); btn.classList.add('on'); renderLib(); }
 
+
 // ================================================================
-// 导出 Excel
+// 批量操作
+// ================================================================
+
+function toggleSelect(id) {
+  if (selectedIds[id]) delete selectedIds[id];
+  else selectedIds[id] = true;
+  selectAllMode = false;
+  renderLib();
+}
+
+function toggleSelectAll() {
+  selectAllMode = !selectAllMode;
+  if (selectAllMode) {
+    var data = loadLibData();
+    selectedIds = {};
+    data.forEach(function(d) { selectedIds[d.id] = true; });
+  } else {
+    selectedIds = {};
+  }
+  renderLib();
+}
+
+async function batchSetStatus(status) {
+  var ids = Object.keys(selectedIds);
+  if (!ids.length) { toast('请先选择灵感', 'err'); return; }
+  var label = {'已验证':'已验证','淘汰':'淘汰','待复刻':'待复刻'};
+  if (!confirm('确认将 ' + ids.length + ' 个灵感标记为「' + (label[status]||status) + '」？')) return;
+  try {
+    var res = await fetch('/inspiration/api/materials/batch-status', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ ids: ids, status: status })
+    });
+    if (!res.ok) throw new Error('操作失败');
+    selectedIds = {};
+    await refreshData();
+    await renderLib();
+    toast('已批量更新 ' + ids.length + ' 条 ✅', 'ok');
+  } catch (err) {
+    toast('批量操作失败: ' + err.message, 'err');
+  }
+}
+
+async function batchDelete() {
+  var ids = Object.keys(selectedIds);
+  if (!ids.length) { toast('请先选择灵感', 'err'); return; }
+  if (!confirm('确认删除 ' + ids.length + ' 个灵感及其复刻记录？此操作不可恢复！')) return;
+  try {
+    for (var i = 0; i < ids.length; i++) {
+      await fetch('/inspiration/api/materials/' + ids[i], { method: 'DELETE' });
+    }
+    selectedIds = {};
+    await refreshData();
+    await renderLib();
+    toast('已删除 ' + ids.length + ' 条 ✅', 'ok');
+  } catch (err) {
+    toast('批量删除失败: ' + err.message, 'err');
+  }
+}
+
+
 // ================================================================
 
 async function doExport() {
@@ -731,7 +815,8 @@ async function doExport() {
   const rows2 = [];
   DATA.forEach(d => { (d.replications||[]).forEach(r => { rows2.push({
     '所属灵感': d.name, '品牌': d.brand||'', '视觉锤': d.visual||'', '心理标签': d.psychology||'',
-    '我们拍的链接': r.link||'', '消耗(元)': r.spend||0, '展示量': r.impressions||0,
+    '我们拍的链接': r.link||'', '消耗(元)': r.spend||0, '展示量': r.impressions||0, '获线索数': r.leads||0,
+    '线索成本': r.leads > 0 ? Math.round((r.spend||0)/(r.leads||1)) : '-',
     '投放效果': r.effect||'', '投手笔记': r.notes||'', '复刻日期': r.date||'',
   }); }); });
 
@@ -1223,348 +1308,6 @@ function rerenderRp() {
 // ================================================================
 // 拍摄建议
 // ================================================================
-
-async function renderSuggestions() {
-  const container = document.getElementById('statsBody');
-  if (!container) return;
-  container.innerHTML = '<div class="empty" style="padding:30px"><p>⏳ 加载中…</p></div>';
-
-  try {
-    const res = await fetch('/inspiration/api/suggestions');
-    if (!res.ok) throw new Error('加载失败');
-    const d = await res.json();
-
-    // 如果有AI生成的拍摄建议，优先展示
-    if (d.aiSuggestion && d.aiSuggestion.content) {
-      var aiHtml = '<div class="card" style="border-left:4px solid var(--orange);margin-bottom:16px">' +
-        '<div class="card-h" style="border-bottom:1px solid var(--sep-l);padding-bottom:12px">🤖 AI 拍摄建议（' + esc(d.aiSuggestion.title || '最新分析') + '）</div>' +
-        '<div style="padding:16px 20px;line-height:1.8;font-size:.85rem">' +
-          esc(d.aiSuggestion.content).replace(/^##[^\n]*拍摄建议[^\n]*\n*/,'').replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>') +
-        '</div>' +
-        '<div style="padding:0 20px 14px;font-size:.72rem;color:var(--t5)">生成于 ' + (d.aiSuggestion.createdAt ? d.aiSuggestion.createdAt.slice(0,10) : '') +
-        ' · <a href="javascript:switchStatsView(\'ai\')" style="color:var(--blue);text-decoration:none">查看完整报告 →</a></div>' +
-      '</div>';
-
-      // Also show rule-based suggestions below as reference
-      if (!d.suggestions || !d.suggestions.length) {
-        container.innerHTML = aiHtml + '<div class="empty" style="margin-top:12px"><p>没有待复刻的灵感</p></div>';
-        return;
-      }
-      // Show AI suggestions + rule-based suggestions together
-      container.innerHTML = aiHtml + '<div class="card-h" style="padding:16px 0 8px;font-size:.85rem;color:var(--t3)">📋 规则引擎评分参考</div>';
-      // Append rule-based cards below
-      d.suggestions.forEach(function(s) {
-        var levelColors = {'高':'#34C759','中':'#FF9500','低':'#FF3B30'};
-        container.innerHTML += '<div class="card" style="border-left:4px solid ' + levelColors[s.level] + '">';
-        container.innerHTML += '<div class="card-h" style="display:flex;align-items:center;gap:8px">';
-        container.innerHTML += '<span style="font-size:.95rem;font-weight:700">' + esc(s.name) + '</span>';
-        container.innerHTML += '<span style="margin-left:auto;background:' + levelColors[s.level] + ';color:#fff;padding:2px 14px;border-radius:20px;font-size:.75rem;font-weight:700">' + s.level + ' 优先级</span>';
-        container.innerHTML += '</div>';
-        if (s.brand) container.innerHTML += '<div style="padding:0 20px 8px;color:var(--t4);font-size:.78rem">' + esc(s.brand) + (s.category ? ' · ' + esc(s.category) : '') + ' · 采集于 ' + (s.date || '-') + '</div>';
-        container.innerHTML += '<div style="padding:0 20px 12px;display:flex;gap:6px;flex-wrap:wrap">';
-        if (s.visual) container.innerHTML += '<span class="vtag"><span class="vico">🎨</span>' + esc(s.visual) + '</span>';
-        if (s.hook) container.innerHTML += '<span class="vtag"><span class="vico">💬</span>' + esc(s.hook) + '</span>';
-        if (s.psychology) {
-          s.psychology.split(/[,，、/|]/).forEach(function(p) {
-            container.innerHTML += '<span class="vtag" style="background:var(--bg2)">🧠 ' + esc(p.trim()) + '</span>';
-          });
-        }
-        container.innerHTML += '</div>';
-        if (s.reasons && s.reasons.length) {
-          container.innerHTML += '<div style="padding:8px 20px;background:var(--bg2);margin:0 16px 8px;border-radius:10px"><div style="font-size:.75rem;color:var(--t4);margin-bottom:4px;font-weight:600">推荐理由</div>';
-          s.reasons.forEach(function(r) {
-            container.innerHTML += '<div style="font-size:.8rem;padding:3px 0;color:var(--t2)">✅ ' + esc(r) + '</div>';
-          });
-          container.innerHTML += '</div>';
-        }
-        container.innerHTML += '</div>';
-      });
-    } else if (!d.suggestions || !d.suggestions.length) {
-      container.innerHTML = '<div class="empty"><div class="ei">🎯</div><p>没有待复刻的灵感</p><p class="hint">录入新灵感后，系统会根据历史数据自动给出拍摄优先级建议</p></div>';
-      return;
-    }
-
-    // 统计汇总
-    const highCount = d.suggestions.filter(s => s.level === '高').length;
-    const midCount = d.suggestions.filter(s => s.level === '中').length;
-    const lowCount = d.suggestions.filter(s => s.level === '低').length;
-
-    var html = '<div class="metrics">';
-    html += '<div class="metric"><div class="mv">' + d.suggestions.length + '</div><div class="ml">待拍灵感</div></div>';
-    html += '<div class="metric g"><div class="mv">' + highCount + '</div><div class="ml">高优先级</div></div>';
-    html += '<div class="metric o"><div class="mv">' + midCount + '</div><div class="ml">中优先级</div></div>';
-    html += '<div class="metric"><div class="mv">' + lowCount + '</div><div class="ml">低优先级</div></div>';
-    html += '</div>';
-
-    html += '<div style="text-align:center;padding:0 0 16px;font-size:.78rem;color:var(--t4)">基于视觉锤/心理标签的历史跑量率和线索成本自动评分</div>';
-
-    // 排名列表
-    d.suggestions.forEach(function(s) {
-      var levelColors = {'高':'#34C759','中':'#FF9500','低':'#FF3B30'};
-      html += '<div class="card" style="border-left:4px solid ' + levelColors[s.level] + '">';
-      html += '<div class="card-h" style="display:flex;align-items:center;gap:8px">';
-      html += '<span style="font-size:1.1rem">' + esc(s.name) + '</span>';
-      html += '<span style="margin-left:auto;background:' + levelColors[s.level] + ';color:#fff;padding:2px 12px;border-radius:20px;font-size:.72rem;font-weight:700">' + s.level + ' 优先级</span>';
-      html += '</div>';
-      
-      // 基本信息
-      html += '<div style="padding:0 4px 8px;color:var(--t4);font-size:.78rem">';
-      if (s.brand) html += esc(s.brand) + (s.category ? ' · ' + esc(s.category) : '') + ' · ';
-      html += '采集于 ' + (s.date || '-');
-      html += '</div>';
-
-      // 关键元素
-      html += '<div style="padding:0 4px 12px;display:flex;gap:6px;flex-wrap:wrap">';
-      if (s.visual) html += '<span class="vtag"><span class="vico">🎨</span>' + esc(s.visual) + '</span>';
-      if (s.hook) html += '<span class="vtag"><span class="vico">💬</span>' + esc(s.hook) + '</span>';
-      if (s.psychology) {
-        s.psychology.split(/[,，、/|]/).forEach(function(p) {
-          html += '<span class="vtag" style="background:var(--bg2)">🧠 ' + esc(p.trim()) + '</span>';
-        });
-      }
-      html += '</div>';
-
-      // 推荐理由
-      if (s.reasons && s.reasons.length) {
-        html += '<div style="padding:8px 4px;background:var(--bg2);border-radius:10px;margin-bottom:8px">';
-        html += '<div style="font-size:.72rem;color:var(--t4);margin-bottom:4px">推荐理由</div>';
-        s.reasons.forEach(function(r) {
-          html += '<div style="font-size:.78rem;padding:3px 0;color:var(--t2)">✅ ' + esc(r) + '</div>';
-        });
-        html += '</div>';
-      }
-
-      // 匹配的历史组合
-      if (s.matchedCombos && s.matchedCombos.length) {
-        html += '<div style="font-size:.72rem;color:var(--t4);margin-bottom:4px">已验证的历史组合</div>';
-        s.matchedCombos.forEach(function(c) {
-          var rate = c.total > 0 ? (c.pao / c.total * 100).toFixed(0) : 0;
-          html += '<span style="display:inline-block;background:var(--card);border:1px solid var(--sep);border-radius:8px;padding:4px 10px;margin:2px;font-size:.72rem">🎯 ' + esc(c.name) + ' <span style="color:var(--green)">' + c.pao + '/' + c.total + ' 跑量 </span>' + rate + '%</span>';
-        });
-      }
-
-      // 操作按钮
-      html += '<div style="padding:8px 0 0"><button class="btn-sm" onclick="switchStatsView(\'analysis\')">📊 看详细数据</button></div>';
-
-      html += '</div>';
-    });
-
-    // 底部历史数据参考
-    html += '<div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">';
-    if (d.visStats && d.visStats.length) {
-      html += '<div class="card" style="flex:1;min-width:200px"><div class="card-h">🎨 视觉锤历史表现</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>视觉锤</th><th>复刻</th><th>跑量</th><th>线索</th></tr></thead><tbody>';
-      d.visStats.forEach(function(v) {
-        html += '<tr><td>' + esc(v.name) + '</td><td>' + v.total + '</td><td class="cv">' + v.pao + '</td><td>' + (v.totalLeads||0) + '</td></tr>';
-      });
-      html += '</tbody></table></div></div>';
-    }
-    if (d.psychStats && d.psychStats.length) {
-      html += '<div class="card" style="flex:1;min-width:200px"><div class="card-h">🧠 心理标签历史表现</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>心理标签</th><th>复刻</th><th>跑量</th><th>线索</th></tr></thead><tbody>';
-      d.psychStats.forEach(function(p) {
-        html += '<tr><td>' + esc(p.name) + '</td><td>' + p.total + '</td><td class="cv">' + p.pao + '</td><td>' + (p.totalLeads||0) + '</td></tr>';
-      });
-      html += '</tbody></table></div></div>';
-    }
-    html += '</div>';
-
-    html += '<div style="text-align:center;padding:12px 0"><button class="btn-g" onclick="switchStatsView(\'analysis\')">← 返回数据分析</button></div>';
-
-    container.innerHTML = html;
-
-    // 数值动画
-    var mvs = container.querySelectorAll('.metric .mv');
-    mvs.forEach(function(el) {
-      var val = parseInt(el.textContent) || 0;
-      if (val > 0) {
-        var obj = { v: 0 };
-        gsap.to(obj, { v: val, duration: 0.6, ease: 'power2.out', onUpdate: function() { el.textContent = Math.round(obj.v); }});
-      }
-    });
-
-  } catch (err) {
-    container.innerHTML = '<div class="empty"><p>❌ 加载失败: ' + err.message + '</p></div>';
-  }
-}
-
-
-
-
-// ================================================================
-// AI 分析报告中心
-// ================================================================
-
-let aiReports = [];
-let curReportId = null;
-let aiGenerating = false;
-
-async function renderAI() {
-  const hub = document.getElementById('aiHub');
-  if (!hub) return;
-
-  hub.innerHTML = '<div class="ai-hub">' +
-    '<div id="aiSidebar" class="ai-sidebar">' +
-      '<div style="padding:16px 14px 12px;border-bottom:1px solid var(--sep-l)">' +
-        '<div style="font-size:.82rem;font-weight:700;color:var(--t3)">🤖 分析记录</div>' +
-        '<div style="font-size:.66rem;color:var(--t5);margin-top:2px">已保存的AI分析报告</div>' +
-      '</div>' +
-      '<div id="aiReportList" style="flex:1;overflow-y:auto;padding:8px 6px">' +
-        '<div class="empty" style="padding:30px 16px"><p style="font-size:.78rem">⏳ 加载中…</p></div>' +
-      '</div>' +
-    '</div>' +
-    '<div id="aiMain" class="ai-main">' +
-      '<div class="card" style="padding:40px;text-align:center">' +
-        '<div class="ei" style="font-size:3rem">🤖</div>' +
-        '<p style="font-weight:700;font-size:1rem;margin:8px 0 4px">AI 分析报告</p>' +
-        '<p style="font-size:.82rem;color:var(--t4);margin-bottom:16px">基于库中的复刻数据，生成策略级分析和拍摄建议</p>' +
-        '<button class="btn-m" onclick="generateAIReport()" style="padding:12px 32px;font-size:.95rem">✨ 生成新分析</button>' +
-        '<p style="font-size:.72rem;color:var(--t5);margin-top:8px">分析会保存在历史记录中，可随时翻阅</p>' +
-      '</div>' +
-    '</div>' +
-  '</div>';
-
-  await loadAIReports();
-}
-
-async function loadAIReports() {
-  try {
-    var res = await fetch('/inspiration/api/ai/reports');
-    if (!res.ok) throw new Error('加载失败');
-    aiReports = await res.json();
-
-    var listEl = document.getElementById('aiReportList');
-    if (!listEl) return;
-
-    if (!aiReports.length) {
-      listEl.innerHTML = '<div style="padding:30px 14px;text-align:center"><p style="font-size:.78rem;color:var(--t4)">还没有分析报告</p><p style="font-size:.7rem;color:var(--t5)">点击「生成新分析」创建第一份</p></div>';
-      return;
-    }
-
-    listEl.innerHTML = aiReports.map(function(r) {
-      var isActive = curReportId === r.id;
-      var dateStr = r.createdAt ? r.createdAt.slice(0, 10) : '';
-      return '<div class="ai-rep-item' + (isActive ? ' on' : '') + '" style="display:flex;align-items:center;gap:4px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px;transition:.1s" onmouseenter="this.style.background=\'var(--bg)\'" onmouseleave="this.style.background=\'\'">' +
-        '<div onclick="loadAIReport(\'' + r.id + '\')" style="flex:1;min-width:0">' +
-          '<div class="ai-rep-title">' + esc(r.title || 'AI分析') + '</div>' +
-          '<div class="ai-rep-date">' + dateStr + '</div>' +
-        '</div>' +
-        '<button class="ai-del-btn" onclick="event.stopPropagation();deleteAIReport(\'' + r.id + '\')" style="border:none;background:var(--red-bg);color:var(--red);border-radius:6px;padding:2px 7px;font-size:.65rem;font-family:inherit;font-weight:700;cursor:pointer;flex-shrink:0;opacity:0.4;transition:.12s" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.4\'">✕</button>' +
-      '</div>';
-    }).join('');  } catch (err) {
-    console.warn('loadAIReports error:', err);
-  }
-}
-
-async function generateAIReport() {
-  if (aiGenerating) return;
-  aiGenerating = true;
-
-  var mainEl = document.getElementById('aiMain');
-  if (!mainEl) return;
-
-  mainEl.innerHTML = '<div class="card" style="padding:50px;text-align:center">' +
-    '<p style="font-size:.9rem;color:var(--t4)">🤖 AI 正在分析数据…</p>' +
-    '<p style="font-size:.72rem;color:var(--t5);margin-top:6px">根据所有复刻记录生成策略建议（约15-30秒）</p>' +
-    '<div style="margin-top:16px;width:200px;height:4px;background:var(--sep);border-radius:4px;overflow:hidden;margin-left:auto;margin-right:auto">' +
-      '<div style="width:30%;height:100%;background:var(--blue);border-radius:4px;animation:aiLoad 1.2s ease infinite"></div>' +
-    '</div>' +
-  '</div>';
-
-  try {
-    var res = await fetch('/inspiration/api/ai/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body: '{}' });
-    if (!res.ok) throw new Error('生成失败');
-    var data = await res.json();
-
-    curReportId = data.id;
-    await loadAIReports();
-    await displayAIReport(data);
-  } catch (err) {
-    mainEl.innerHTML = '<div class="card" style="padding:40px;text-align:center">' +
-      '<p style="color:var(--red)">❌ 生成失败: ' + err.message + '</p>' +
-      '<button class="btn-m" onclick="generateAIReport()" style="margin-top:12px">重试</button>' +
-    '</div>';
-  } finally {
-    aiGenerating = false;
-  }
-}
-
-async function loadAIReport(id) {
-  if (aiGenerating) return;
-  try {
-    var res = await fetch('/inspiration/api/ai/reports/' + id);
-    if (!res.ok) throw new Error('加载失败');
-    var data = await res.json();
-    curReportId = id;
-    await loadAIReports();
-    await displayAIReport(data);
-  } catch (err) {
-    toast('加载报告失败: ' + err.message, 'err');
-  }
-}
-
-async function displayAIReport(data) {
-  var mainEl = document.getElementById('aiMain');
-  if (!mainEl) return;
-
-  // Parse the content into sections
-  var content = data.content || '';
-  var sections = content.split(/\n(?=\d+\.\s|##)/);
-
-  // Extract key metrics from data snapshot if available, or from the content
-  var metricsHtml = '<div class="metrics">' +
-    '<div class="metric"><div class="mv">' + (DATA ? DATA.length : '-') + '</div><div class="ml">总灵感</div></div>' +
-    '<div class="metric g"><div class="mv">' + (DATA ? DATA.flatMap(function(d){return d.replications||[];}).length : '-') + '</div><div class="ml">复刻次数</div></div>' +
-    '<div class="metric o"><div class="mv">' + (DATA ? DATA.filter(function(d){return (d.replications||[]).some(function(r){return r.effect==="跑量";});}).length : '-') + '</div><div class="ml">跑通灵感</div></div>' +
-    '<div class="metric"><div class="mv">' + (DATA ? DATA.filter(function(d){return d.status==="待复刻";}).length : '-') + '</div><div class="ml">待复刻</div></div>' +
-  '</div>';
-
-  // Format the full AI content - it already has structured headers
-  var formatContent = function(text) {
-    return esc(text)
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/^##\s+/gm, '<div style="font-weight:700;font-size:.95rem;color:var(--t1);margin:16px 0 8px">')
-      .replace(/\n\n/g, '<br><br>')
-      .replace(/^\d+\.\s/gm, '<br><strong>$&</strong>')
-      .replace(/^-\s/gm, '<br>• ');
-  };
-
-  var formatted = formatContent(content);
-
-  var html = '';
-
-  // Top bar with actions
-  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">';
-  html += '<span style="font-weight:700;font-size:.9rem;flex:1">' + esc(data.title || 'AI分析报告') + '</span>';
-  html += '<span style="font-size:.72rem;color:var(--t4)">' + (data.createdAt ? data.createdAt.slice(0, 16).replace('T', ' ') : '') + '</span>';
-  html += '<button class="btn-m" onclick="generateAIReport()" style="padding:8px 18px;font-size:.8rem">✨ 重新生成</button>';
-  html += '</div>';
-
-  // Metrics
-  html += metricsHtml;
-
-  // Full report in one card
-  html += '<div class="card">';
-  html += '<div style="padding:20px 24px;line-height:1.8;font-size:.88rem">' + formatted + '</div>';
-  html += '</div>';
-
-  mainEl.innerHTML = html;
-
-  // Number animation
-  var mvs = mainEl.querySelectorAll('.metric .mv');
-  mvs.forEach(function(el) {
-    var val = parseInt(el.textContent.replace(/[^0-9-]/g,'')) || 0;
-    if (val > 0) {
-      var obj = { v: 0 };
-      gsap.to(obj, { v: val, duration: 0.6, ease: 'power2.out', onUpdate: function() {
-        el.textContent = Math.round(obj.v);
-      }});
-    }
-  });
-}
-
-// Add animation keyframe
-var style = document.createElement('style');
-style.textContent = '@keyframes aiLoad { 0%{width:10%;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:10%;margin-left:90%} }';
-document.head.appendChild(style);
 
 async function renderStats() {
   if (statsView === 'replication') {
