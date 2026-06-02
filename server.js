@@ -717,11 +717,20 @@ app.get('/api/ai/reports/:id', async (req, res) => {
     res.json({
       id: r.id, title: r.title, content: r.content,
       suggestions: r.suggestions || '',
-      dataSnapshot: r.data_snapshot ? JSON.parse(r.data_snapshot) : null,
+      dataSnapshot: r.data_snapshot || '',
       createdAt: r.created_at ? r.created_at.toISOString() : '',
     });
   } catch (err) {
     res.status(500).json({ error: '查询失败: ' + err.message });
+  }
+});
+
+app.delete('/api/ai/reports/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM ai_reports WHERE id = ?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: '删除失败: ' + err.message });
   }
 });
 

@@ -538,6 +538,30 @@ body{font-family:'Noto Sans SC',-apple-system,sans-serif;background:var(--bg);co
 .ff-hint{font-size:.66rem;color:var(--t5);margin-top:2px;line-height:1.4}
 
 
+/* ================================================================
+   AI 分析报告中心
+   ================================================================ */
+
+.ai-hub{display:flex;gap:16px;align-items:flex-start;min-height:70vh}
+.ai-sidebar{width:220px;flex-shrink:0;min-height:calc(100vh - 100px);background:var(--card);border-radius:var(--r);box-shadow:var(--sh);display:flex;flex-direction:column}
+.ai-main{flex:1;min-width:0}
+.ai-rep-item{padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:2px;transition:.1s}
+.ai-rep-item:hover{background:var(--bg)}
+.ai-rep-item.on{background:var(--blue-bg)}
+.ai-rep-title{font-size:.78rem;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-rep-date{font-size:.66rem;color:var(--t5);margin-top:2px}
+.ai-back-btn{display:none}
+
+@media(max-width:860px){
+  .ai-hub{flex-direction:column;gap:10px}
+  .ai-sidebar{width:100%;min-height:auto;flex-direction:row;overflow-x:auto;padding:6px;gap:4px}
+  .ai-sidebar > div:first-child{display:none}
+  .ai-rep-item{white-space:nowrap;flex-shrink:0;margin-bottom:0;padding:6px 12px;font-size:.75rem}
+  .ai-rep-date{display:none}
+  .ai-main{width:100%}
+  .ai-back-btn{display:block}
+}
+
 /* Mobile: smaller charts */
 @media(max-width:860px){
   .ch-row.three{grid-template-columns:1fr}

@@ -1200,8 +1200,8 @@ async function renderAI() {
   const hub = document.getElementById('aiHub');
   if (!hub) return;
 
-  hub.innerHTML = '<div style="display:flex;gap:16px;align-items:flex-start;min-height:70vh">' +
-    '<div id="aiSidebar" style="width:220px;flex-shrink:0;min-height:calc(100vh - 100px);background:var(--card);border-radius:var(--r);box-shadow:var(--sh);display:flex;flex-direction:column">' +
+  hub.innerHTML = '<div class="ai-hub">' +
+    '<div id="aiSidebar" class="ai-sidebar">' +
       '<div style="padding:16px 14px 12px;border-bottom:1px solid var(--sep-l)">' +
         '<div style="font-size:.82rem;font-weight:700;color:var(--t3)">🤖 分析记录</div>' +
         '<div style="font-size:.66rem;color:var(--t5);margin-top:2px">已保存的AI分析报告</div>' +
@@ -1210,7 +1210,7 @@ async function renderAI() {
         '<div class="empty" style="padding:30px 16px"><p style="font-size:.78rem">⏳ 加载中…</p></div>' +
       '</div>' +
     '</div>' +
-    '<div id="aiMain" style="flex:1;min-width:0">' +
+    '<div id="aiMain" class="ai-main">' +
       '<div class="card" style="padding:40px;text-align:center">' +
         '<div class="ei" style="font-size:3rem">🤖</div>' +
         '<p style="font-weight:700;font-size:1rem;margin:8px 0 4px">AI 分析报告</p>' +
@@ -1241,12 +1241,14 @@ async function loadAIReports() {
     listEl.innerHTML = aiReports.map(function(r) {
       var isActive = curReportId === r.id;
       var dateStr = r.createdAt ? r.createdAt.slice(0, 10) : '';
-      return '<div class="ai-rep-item' + (isActive ? ' on' : '') + '" data-id="' + r.id + '" onclick="loadAIReport(\'' + r.id + '\')" style="padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:2px;transition:.1s;' + (isActive ? 'background:var(--blue-bg)' : '') + '">' +
-        '<div style="font-size:.78rem;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(r.title || 'AI分析') + '</div>' +
-        '<div style="font-size:.66rem;color:var(--t5);margin-top:2px">' + dateStr + '</div>' +
+      return '<div class="ai-rep-item' + (isActive ? ' on' : '') + '" style="display:flex;align-items:center;gap:4px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px;transition:.1s" onmouseenter="this.style.background=\'var(--bg)\'" onmouseleave="this.style.background=\'\'">' +
+        '<div onclick="loadAIReport(\'' + r.id + '\')" style="flex:1;min-width:0">' +
+          '<div class="ai-rep-title">' + esc(r.title || 'AI分析') + '</div>' +
+          '<div class="ai-rep-date">' + dateStr + '</div>' +
+        '</div>' +
+        '<button class="ai-del-btn" onclick="event.stopPropagation();deleteAIReport(\'' + r.id + '\')" style="border:none;background:var(--red-bg);color:var(--red);border-radius:6px;padding:2px 7px;font-size:.65rem;font-family:inherit;font-weight:700;cursor:pointer;flex-shrink:0;opacity:0.4;transition:.12s" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.4\'">✕</button>' +
       '</div>';
-    }).join('');
-  } catch (err) {
+    }).join('');  } catch (err) {
     console.warn('loadAIReports error:', err);
   }
 }
@@ -1509,6 +1511,32 @@ async function renderStats() {
 // ================================================================
 // AI 分析
 // ================================================================
+
+
+
+async function deleteAIReport(id) {
+  if (!confirm('确认删除这份AI分析报告？')) return;
+  try {
+    var res = await fetch('/inspiration/api/ai/reports/' + id, { method: 'DELETE' });
+    if (!res.ok) throw new Error('删除失败');
+    if (curReportId === id) {
+      curReportId = null;
+      var mainEl = document.getElementById('aiMain');
+      if (mainEl) {
+        mainEl.innerHTML = '<div class="card" style="padding:40px;text-align:center">' +
+          '<div class="ei" style="font-size:3rem">🤖</div>' +
+          '<p style="font-weight:700;font-size:1rem;margin:8px 0 4px">AI 分析报告</p>' +
+          '<p style="font-size:.82rem;color:var(--t4);margin-bottom:16px">选择一个报告查看，或生成新的分析</p>' +
+          '<button class="btn-m" onclick="generateAIReport()" style="padding:12px 32px;font-size:.95rem">✨ 生成新分析</button>' +
+        '</div>';
+      }
+    }
+    await loadAIReports();
+    toast('已删除', 'ok');
+  } catch (err) {
+    toast('删除失败: ' + err.message, 'err');
+  }
+}
 
 function startAIAnalysis() {
   var el = document.getElementById('aiResult');
