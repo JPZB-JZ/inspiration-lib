@@ -1376,13 +1376,25 @@ async function generateAIReport() {
   var mainEl = document.getElementById('aiMain');
   if (!mainEl) return;
 
-  mainEl.innerHTML = '<div class="card" style="padding:50px;text-align:center">' +
-    '<p style="font-size:.9rem;color:var(--t4)">🤖 AI 正在分析数据…</p>' +
-    '<p style="font-size:.72rem;color:var(--t5);margin-top:6px">根据所有复刻记录生成策略建议（约15-30秒）</p>' +
-    '<div style="margin-top:16px;width:200px;height:4px;background:var(--sep);border-radius:4px;overflow:hidden;margin-left:auto;margin-right:auto">' +
-      '<div style="width:30%;height:100%;background:var(--blue);border-radius:4px;animation:aiLoad 1.2s ease infinite"></div>' +
+  mainEl.innerHTML = '<div class="card" style="padding:60px 40px;text-align:center">' +
+    '<div style="position:relative;display:inline-block;margin-bottom:20px">' +
+      '<div style="font-size:4rem;line-height:1;animation:aiBounce 0.8s ease-in-out infinite alternate">🤖</div>' +
+      '<div style="position:absolute;top:-10px;right:-20px;font-size:1.2rem;animation:aiPop 1.2s ease infinite">💭</div>' +
+      '<div style="position:absolute;top:-25px;right:-5px;font-size:.9rem;animation:aiPop 1.2s ease infinite 0.3s">💡</div>' +
+      '<div style="position:absolute;top:-35px;right:20px;font-size:.7rem;animation:aiPop 1.2s ease infinite 0.6s">✨</div>' +
+    '</div>' +
+    '<p style="font-weight:700;font-size:1.1rem;color:var(--t1);margin-bottom:4px">正在加急分析中...</p>' +
+    '<p style="font-size:.85rem;color:var(--t4)">AI 大脑正在飞速运转，请稍候</p>' +
+    '<div style="margin-top:20px;display:flex;gap:6px;justify-content:center">' +
+      '<div style="width:8px;height:8px;border-radius:50%;background:var(--blue);animation:aiDot 1s ease-in-out infinite"></div>' +
+      '<div style="width:8px;height:8px;border-radius:50%;background:var(--blue);animation:aiDot 1s ease-in-out infinite 0.2s"></div>' +
+      '<div style="width:8px;height:8px;border-radius:50%;background:var(--blue);animation:aiDot 1s ease-in-out infinite 0.4s"></div>' +
     '</div>' +
   '</div>';
+var s=document.createElement('style');s.textContent='@keyframes aiBounce{from{transform:translateY(0) scale(1)}to{transform:translateY(-8px) scale(1.05)}}@keyframes aiPop{0%{opacity:0;transform:translateY(4px) scale(.8)}50%{opacity:1;transform:translateY(-2px) scale(1.1)}100%{opacity:0;transform:translateY(-8px) scale(.8)}}@keyframes aiDot{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}';document.head.appendChild(s);
+
+  // Add animation keyframes
+  (function(){var s=document.getElementById('aiLoadStyle');if(!s){s=document.createElement('style');s.id='aiLoadStyle';s.textContent='@keyframes aiBounce{from{transform:translateY(0) scale(1)}to{transform:translateY(-8px) scale(1.05)}}@keyframes aiPop{0%{opacity:0;transform:translateY(4px) scale(.8)}50%{opacity:1;transform:translateY(-2px) scale(1.1)}100%{opacity:0;transform:translateY(-8px) scale(.8)}}@keyframes aiDot{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}';document.head.appendChild(s);}})();;
 
   try {
     var res = await fetch('/inspiration/api/ai/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body: '{}' });
