@@ -1086,7 +1086,7 @@ async function renderSuggestions() {
       var aiHtml = '<div class="card" style="border-left:4px solid var(--orange);margin-bottom:16px">' +
         '<div class="card-h" style="border-bottom:1px solid var(--sep-l);padding-bottom:12px">🤖 AI 拍摄建议（' + esc(d.aiSuggestion.title || '最新分析') + '）</div>' +
         '<div style="padding:16px 20px;line-height:1.8;font-size:.85rem">' +
-          esc(d.aiSuggestion.content).replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>') +
+          esc(d.aiSuggestion.content).replace(/^##[^\n]*拍摄建议[^\n]*\n*/,'').replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>') +
         '</div>' +
         '<div style="padding:0 20px 14px;font-size:.72rem;color:var(--t5)">生成于 ' + (d.aiSuggestion.createdAt ? d.aiSuggestion.createdAt.slice(0,10) : '') +
         ' · <a href="javascript:switchStatsView(\'ai\')" style="color:var(--blue);text-decoration:none">查看完整报告 →</a></div>' +
@@ -1097,8 +1097,35 @@ async function renderSuggestions() {
         container.innerHTML = aiHtml + '<div class="empty" style="margin-top:12px"><p>没有待复刻的灵感</p></div>';
         return;
       }
-      // Show AI + rule-based together
-      container.innerHTML = aiHtml;
+      // Show AI suggestions + rule-based suggestions together
+      container.innerHTML = aiHtml + '<div class="card-h" style="padding:16px 0 8px;font-size:.85rem;color:var(--t3)">📋 规则引擎评分参考</div>';
+      // Append rule-based cards below
+      d.suggestions.forEach(function(s) {
+        var levelColors = {'高':'#34C759','中':'#FF9500','低':'#FF3B30'};
+        container.innerHTML += '<div class="card" style="border-left:4px solid ' + levelColors[s.level] + '">';
+        container.innerHTML += '<div class="card-h" style="display:flex;align-items:center;gap:8px">';
+        container.innerHTML += '<span style="font-size:.95rem;font-weight:700">' + esc(s.name) + '</span>';
+        container.innerHTML += '<span style="margin-left:auto;background:' + levelColors[s.level] + ';color:#fff;padding:2px 14px;border-radius:20px;font-size:.75rem;font-weight:700">' + s.level + ' 优先级</span>';
+        container.innerHTML += '</div>';
+        if (s.brand) container.innerHTML += '<div style="padding:0 20px 8px;color:var(--t4);font-size:.78rem">' + esc(s.brand) + (s.category ? ' · ' + esc(s.category) : '') + ' · 采集于 ' + (s.date || '-') + '</div>';
+        container.innerHTML += '<div style="padding:0 20px 12px;display:flex;gap:6px;flex-wrap:wrap">';
+        if (s.visual) container.innerHTML += '<span class="vtag"><span class="vico">🎨</span>' + esc(s.visual) + '</span>';
+        if (s.hook) container.innerHTML += '<span class="vtag"><span class="vico">💬</span>' + esc(s.hook) + '</span>';
+        if (s.psychology) {
+          s.psychology.split(/[,，、/|]/).forEach(function(p) {
+            container.innerHTML += '<span class="vtag" style="background:var(--bg2)">🧠 ' + esc(p.trim()) + '</span>';
+          });
+        }
+        container.innerHTML += '</div>';
+        if (s.reasons && s.reasons.length) {
+          container.innerHTML += '<div style="padding:8px 20px;background:var(--bg2);margin:0 16px 8px;border-radius:10px"><div style="font-size:.75rem;color:var(--t4);margin-bottom:4px;font-weight:600">推荐理由</div>';
+          s.reasons.forEach(function(r) {
+            container.innerHTML += '<div style="font-size:.8rem;padding:3px 0;color:var(--t2)">✅ ' + esc(r) + '</div>';
+          });
+          container.innerHTML += '</div>';
+        }
+        container.innerHTML += '</div>';
+      });
     } else if (!d.suggestions || !d.suggestions.length) {
       container.innerHTML = '<div class="empty"><div class="ei">🎯</div><p>没有待复刻的灵感</p><p class="hint">录入新灵感后，系统会根据历史数据自动给出拍摄优先级建议</p></div>';
       return;
