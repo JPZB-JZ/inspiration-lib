@@ -208,7 +208,7 @@ body{font-family:'Noto Sans SC',-apple-system,sans-serif;background:var(--bg);co
 .lib-count{font-size:.73rem;color:var(--t4);font-weight:600;white-space:nowrap}
 
 /* 卡片网格 — 核心 */
-.ml{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+.ml{display:block}
 
 .mc{
   background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:14px 18px;
