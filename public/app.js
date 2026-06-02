@@ -655,13 +655,6 @@ async function doExport() {
   }
 
 
-  // AI analysis section
-  var sep = document.createElement('div');
-  sep.style.cssText = 'margin-top:28px;text-align:center';
-  sep.innerHTML = '<div style="border-top:1px solid var(--sep-l);padding-top:24px;margin-bottom:8px">'
-    + '<div style="font-size:.82rem;color:var(--t4);margin-bottom:16px">让 AI 根据当前数据分析策略方向</div>'
-    + '<button class="btn-m" style="font-size:1rem;padding:14px 36px" onclick="startAIAnalysis()">🤖 AI 深度解析</button></div>';
-  body.appendChild(sep);
 }
 
 // ================================================================
@@ -908,9 +901,8 @@ function showGuide() {
   var steps = [
     { ic: String.fromCodePoint(0x1f50d), title: '采集灵感', desc: '在「录入」页面粘贴竞品/同行的视频链接，标注视觉锤、文案钩子、客户心理标签，给投手团队沉淀可复制的创意素材。' },
     { ic: String.fromCodePoint(0x1f4da), title: '管理灵感库', desc: '在「灵感库」浏览所有采集的素材，添加复刻记录（投放链接、消耗、跑量效果）。好灵感直接拿去拍，拍完回来记结果。' },
-    { ic: String.fromCodePoint(0x1f4ca), title: '看板分析', desc: '「看板」自动统计视觉锤成功率、心理标签转化率、最佳组合。一眼看清哪种视觉×哪种话术最容易跑量，指导下一步拍摄方向。' },
-    { ic: String.fromCodePoint(0x1f916), title: 'AI 深度分析', desc: '「AI 分析」调用 DeepSeek 对数据做策略级解读：哪些方向值得重仓、哪些该放弃，像有经验的老投手在带你。' },
-  ];
+    { ic: String.fromCodePoint(0x1f4ca), title: '看板分析', desc: '「看板」统计视觉锤成功率、心理标签转化率、最佳组合。点击名称可跳转灵感库搜索。顶部的 AI 解析按钮可调用 DeepSeek 做策略分析。' },
+      ];
 
   var h = '<div class="modal-overlay" onclick="closeGuide()"></div>';
   h += '<div class="guide-card">';
@@ -958,8 +950,7 @@ function showGuide() {
     { ic: String.fromCodePoint(0x1f50d), title: '采集灵感', desc: '在「录入」页面粘贴竞品/同行的视频链接，标注视觉锤、文案钩子、客户心理标签，给投手团队沉淀可复制的创意素材。' },
     { ic: String.fromCodePoint(0x1f4da), title: '管理灵感库', desc: '在「灵感库」浏览所有采集的素材，添加复刻记录（投放链接、消耗、跑量效果）。好灵感直接拿去拍，拍完回来记结果。' },
     { ic: String.fromCodePoint(0x1f4ca), title: '看板分析', desc: '「看板」自动统计视觉锤成功率、心理标签转化率、最佳组合。一眼看清哪种视觉×哪种话术最容易跑量，指导下一步拍摄方向。' },
-    { ic: String.fromCodePoint(0x1f916), title: 'AI 深度分析', desc: '「AI 分析」调用 DeepSeek 对数据做策略级解读：哪些方向值得重仓、哪些该放弃，像有经验的老投手在带你。' },
-  ];
+      ];
 
   var h = '<div class="modal-overlay" onclick="closeGuide()"></div>';
   h += '<div class="guide-card">';
@@ -1007,8 +998,7 @@ function showGuide() {
     { ic: String.fromCodePoint(0x1f50d), title: '采集灵感', desc: '在「录入」页面粘贴竞品/同行的视频链接，标注视觉锤、文案钩子、客户心理标签，给投手团队沉淀可复制的创意素材。' },
     { ic: String.fromCodePoint(0x1f4da), title: '管理灵感库', desc: '在「灵感库」浏览所有采集的素材，添加复刻记录（投放链接、消耗、跑量效果）。好灵感直接拿去拍，拍完回来记结果。' },
     { ic: String.fromCodePoint(0x1f4ca), title: '看板分析', desc: '「看板」自动统计视觉锤成功率、心理标签转化率、最佳组合。一眼看清哪种视觉×哪种话术最容易跑量，指导下一步拍摄方向。' },
-    { ic: String.fromCodePoint(0x1f916), title: 'AI 深度分析', desc: '「AI 分析」调用 DeepSeek 对数据做策略级解读：哪些方向值得重仓、哪些该放弃，像有经验的老投手在带你。' },
-  ];
+      ];
 
   var h = '<div class="modal-overlay" onclick="closeGuide()"></div>';
   h += '<div class="guide-card">';
