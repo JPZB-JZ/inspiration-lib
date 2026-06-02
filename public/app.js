@@ -994,7 +994,7 @@ function renderLocalAI() {
 
 
 function renderAIResult(reply) {
-  const body = document.getElementById('aiBody');
+  const body = document.getElementById('aiResult');
   const total = DATA.length;
   const allRep = DATA.flatMap(d => (d.replications||[]).map(r => ({...r, inspName:d.name, visual:d.visual, psych:d.psychology})));
   const repCount = allRep.length;
@@ -1016,7 +1016,7 @@ function renderAIResult(reply) {
 }
 
 function renderLocalAI() {
-  const body = document.getElementById('aiBody');
+  const body = document.getElementById('aiResult');
   const total = DATA.length;
   const allRep = DATA.flatMap(d => (d.replications||[]).map(r => ({...r, inspName:d.name, visual:d.visual, psych:d.psychology})));
   const repCount = allRep.length;
