@@ -536,3 +536,19 @@ body{font-family:'Noto Sans SC',-apple-system,sans-serif;background:var(--bg);co
 .fg-body.open{max-height:none}
 .fg-body .fg{border-top:1px solid var(--sep-l)}
 .ff-hint{font-size:.66rem;color:var(--t5);margin-top:2px;line-height:1.4}
+
+
+/* Mobile: smaller charts */
+@media(max-width:860px){
+  .ch-row.three{grid-template-columns:1fr}
+  .ch-area{max-height:180px}
+  .ch-area canvas{max-height:180px!important}
+  .metrics{grid-template-columns:repeat(2,1fr);gap:8px}
+  .main{padding:16px 12px 70px}
+  .mc-grid{grid-template-columns:1fr}
+  .fg{grid-template-columns:1fr}
+  .ff{border-right:none}
+  .fl-bar{flex-wrap:wrap;gap:6px}
+  .fl-bar .ios-in{width:100%}
+  .combo-wrap{overflow-x:auto}
+}
