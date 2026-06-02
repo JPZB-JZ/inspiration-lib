@@ -490,7 +490,7 @@ async function renderLib() {
       ${d.link ? (function(){var m=d.link.match(/https?:\/\/([^\/]+)/);var dom=m?m[1]:'';return '<div class="mc-link-row"><span class="fav">🔗</span><a href="'+esc(extractUrl(d.link))+'" target="_blank">点击查看原视频</a></div>'})() : ''}
       <div class="mc-visual">${d.visual ? '<span class="vtag"><span class="vico">🎨</span>'+esc(d.visual)+'</span>' : ''}${d.hook ? '<span class="vtag"><span class="vico">💬</span>'+esc(d.hook)+'</span>' : ''}</div>
       <div class="mc-tg">${d.brand ? '<span class="tg"><span class="tl">品牌</span>'+esc(d.brand)+'</span>' : ''}${d.category ? '<span class="tg"><span class="tl">品类</span>'+esc(d.category)+'</span>' : ''}</div>
-      <div class="mc-stats">${repCount > 0 ? '<span class="mc-stat"><span class="sv">'+repCount+'</span>次复刻</span>'+effTags : '<span class="mc-stat">⏳ 尚未复刻</span>'}</div>
+      <div class="mc-stats">${repCount > 0 ? '<span class="mc-stat"><span class="sv">'+repCount+'</span>次复刻</span><span class="mc-stat">💰 ¥'+reps.reduce(function(s,r){return s+(r.spend||0)},0).toLocaleString()+'</span><span class="mc-stat">👁️ '+reps.reduce(function(s,r){return s+(r.impressions||0)},0).toLocaleString()+'</span>'+effTags : '<span class="mc-stat">⏳ 尚未复刻</span>'}</div>
       <div class="mc-act">
         <button class="btn-repl" onclick="openReplForm('${d.id}')">➕ 添加复刻</button>
         ${repCount > 0 ? `<button onclick="toggleDetail('${d.id}')">📋 详情</button>` : ''}
@@ -503,7 +503,7 @@ async function renderLib() {
           const emoji = {'跑量':'✅','一般':'👌','无效果':'❌'};
           return `<div class="repl-item">
             <div class="repl-top"><span class="repl-eff eff-${r.effect}">${emoji[r.effect]||'👌'} ${r.effect}</span><span class="repl-date">${r.date||'-'}</span><button class="repl-del" onclick="delReplication('${d.id}','${r.id}')">✕</button></div>
-            <div class="repl-row">${r.link ? '<span class="repl-link" onclick="window.open(\''+esc(r.link)+'\',\'_blank\')">🔗 视频</span>' : ''}<span>💰 ¥${(r.spend||0).toLocaleString()}</span><span>👁️ ${(r.impressions||0).toLocaleString()}</span></div>
+            <div class="repl-row">${r.link ? '<span class="repl-link" onclick="window.open(\''+esc(r.link)+'\',\'_blank\')">🔗 视频</span>' : ''}<span>💰 ¥${(r.spend||0).toLocaleString()}</span><span>👁️ ${(r.impressions||0).toLocaleString()}</span><button class="repl-edit" onclick="editReplication('${d.id}','${r.id}')" style="margin-left:auto;padding:2px 8px;border:none;background:var(--bg);border-radius:6px;cursor:pointer;font-size:.7rem">✏️</button></div>
             ${r.notes ? '<div class="repl-notes">📝 '+esc(r.notes)+'</div>' : ''}
           </div>`;
         }).join('')}
@@ -512,6 +512,24 @@ async function renderLib() {
   }).join('') + '</div>';
   list.innerHTML = frag;
   gsap.fromTo('.mc-grid .mc', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.25, stagger: 0.04, ease: 'power1.out' });
+}
+
+
+function editReplication(matId, repId) {
+  var mat = DATA.find(function(d) { return d.id === matId; });
+  if (!mat) return;
+  var rep = (mat.replications||[]).find(function(r) { return r.id === repId; });
+  if (!rep) return;
+  replInspId = matId;
+  document.getElementById('replModalInsp').textContent = '为「' + mat.name + '」编辑复刻';
+  document.getElementById('rfLink').value = rep.link || '';
+  document.getElementById('rfSpend').value = rep.spend || '';
+  document.getElementById('rfImp').value = rep.impressions || '';
+  document.getElementById('rfDate').value = rep.date || '';
+  document.getElementById('rfNotes').value = rep.notes || '';
+  rfEff = rep.effect || '跑量';
+  document.querySelectorAll('#rfEffG .pill').forEach(function(b) { b.className = 'pill'; if (b.dataset.v === rfEff) b.classList.add('r-on'); });
+  document.getElementById('replModal').style.display = 'flex';
 }
 
 function toggleDetail(id) { const el = document.getElementById('detail-'+id); if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
