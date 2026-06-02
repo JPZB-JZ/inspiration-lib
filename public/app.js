@@ -885,6 +885,8 @@ async function renderStats() {
           <tbody>${(d.pending||[]).map(p => `<tr><td><strong>${esc(p.name)}</strong></td><td>${esc(p.visual||'-')}</td><td><button class="btn-sm" onclick="go('lib')">➕ 添加复刻</button></td></tr>`).join('')}</tbody>
         </table></div>
       </div>` : ''}
+      <div id="aiResult"></div>
+
       <div class="ch-row three">
         <div class="card"><div class="card-h">📊 复刻效果分布</div><div class="ch-area"><canvas id="chart-eff"></canvas></div></div>
         <div class="card"><div class="card-h">🎨 视觉锤跑量次数 Top6</div><div class="ch-area"><canvas id="chart-vis-rank"></canvas></div></div>
@@ -932,7 +934,7 @@ async function renderStats() {
 
 function startAIAnalysis() {
   var el = document.getElementById('aiResult');
-  if (!el) return;
+  if (!el) { console.warn('aiResult element missing'); return; }
   el.innerHTML = '<div class="empty" style="padding:40px"><p>⏳ AI 正在分析数据，请稍候…</p></div>';
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   fetch('/inspiration/api/ai/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) })
