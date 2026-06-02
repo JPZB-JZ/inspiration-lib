@@ -1,3 +1,36 @@
+
+
+// ================================================================
+// 主题切换
+// ================================================================
+
+function toggleTheme() {
+  var html = document.documentElement;
+  var isDark = html.getAttribute(data-theme) === dark;
+  if (isDark) {
+    html.removeAttribute(data-theme);
+    localStorage.setItem(theme, light);
+    document.getElementById(themeIcon).textContent = uD83CuDF19;
+    document.getElementById(themeLabel).textContent = u6697u8272u4E3Bu9898;
+  } else {
+    html.setAttribute(data-theme, dark);
+    localStorage.setItem(theme, dark);
+    document.getElementById(themeIcon).textContent = u2600uFE0F;
+    document.getElementById(themeLabel).textContent = u4EAEu8272u4E3Bu9898;
+  }
+}
+
+function initTheme() {
+  var saved = localStorage.getItem(theme);
+  if (saved === dark) {
+    document.documentElement.setAttribute(data-theme, dark);
+    var icon = document.getElementById(themeIcon);
+    var label = document.getElementById(themeLabel);
+    if (icon) icon.textContent = u2600uFE0F;
+    if (label) label.textContent = u4EAEu8272u4E3Bu9898;
+  }
+}
+
 /* ==============================================================
    灵感库 v3 — 数据存储在 MySQL 服务端，多人实时同步
    ============================================================== */
@@ -395,7 +428,7 @@ async function renderLib() {
     pgNext.disabled = curPage >= maxPage;
   } else pgBar.style.display = 'none';
 
-  list.innerHTML = data.map(d => {
+  list.innerHTML = '<div class="mc-grid">' + data.map(d => {
     const stMap = { '待复刻':'s-待复刻','已验证':'s-已验证','淘汰':'s-淘汰' };
     const sc = stMap[d.status] || 's-待复刻';
     const reps = d.replications || [];
@@ -407,10 +440,10 @@ async function renderLib() {
 
     return `<div class="mc">
       <div class="mc-top"><div class="mc-n">${esc(d.name)}</div><div class="mc-st ${sc}">${d.status}</div></div>
-      ${d.link ? `<div class="mc-link" onclick="window.open('${esc(d.link)}','_blank')">🔗 查看原视频</div>` : ''}
-      <div class="mc-mt2">${d.visual ? '🎨 '+esc(d.visual) : ''}${d.hook ? '<span class="hook-sep"></span>💬 '+esc(d.hook) : ''}</div>
+      ${d.link ? (function(){var m=d.link.match(/https?:\/\/([^\/]+)/);var dom=m?m[1]:'';return '<div class="mc-link-row"><span class="fav">🔗</span><a href="'+esc(d.link)+'" target="_blank">'+dom+'</a></div>'})() : ''}
+      <div class="mc-visual">${d.visual ? '<span class="vtag"><span class="vico">🎨</span>'+esc(d.visual)+'</span>' : ''}${d.hook ? '<span class="vtag"><span class="vico">💬</span>'+esc(d.hook)+'</span>' : ''}</div>
       <div class="mc-tg">${d.brand ? '<span class="tg"><span class="tl">品牌</span>'+esc(d.brand)+'</span>' : ''}${d.category ? '<span class="tg"><span class="tl">品类</span>'+esc(d.category)+'</span>' : ''}</div>
-      <div class="mc-rep-bar">${repCount > 0 ? '<span class="rep-summary">📋 复刻 <strong>'+repCount+'</strong> 次</span> '+effTags : '<span class="rep-summary rep-none">⏳ 尚未复刻</span>'}</div>
+      <div class="mc-stats">${repCount > 0 ? '<span class="mc-stat"><span class="sv">'+repCount+'</span>次复刻</span>'+effTags : '<span class="mc-stat">⏳ 尚未复刻</span>'}</div>
       <div class="mc-act">
         <button class="btn-repl" onclick="openReplForm('${d.id}')">➕ 添加复刻</button>
         ${repCount > 0 ? `<button onclick="toggleDetail('${d.id}')">📋 详情</button>` : ''}
@@ -429,7 +462,7 @@ async function renderLib() {
         }).join('')}
       </div>
     </div>`;
-  }).join('');
+  }).join('') + '</div>';
 }
 
 function toggleDetail(id) { const el = document.getElementById('detail-'+id); if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }

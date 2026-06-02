@@ -17,6 +17,37 @@
   --sb-w:220px;
 }
 
+/* ================================================================
+   暗色主题
+   ================================================================ */
+
+[data-theme="dark"]{
+  --bg:#1C1C1E;--card:#2C2C2E;--sep:#38383A;--sep-l:#3A3A3C;
+  --t1:#F2F2F7;--t2:#E5E5EA;--t3:#C7C7CC;--t4:#8E8E93;--t5:#636366;
+  --sh:0 1px 3px rgba(0,0,0,.2);--shm:0 4px 14px rgba(0,0,0,.3);--shl:0 8px 30px rgba(0,0,0,.4);
+  --blue:#0A84FF;--blue-bg:rgba(10,132,255,.15);
+  --green:#30D158;--green-bg:rgba(48,209,88,.15);
+  --orange:#FF9F0A;--orange-bg:rgba(255,159,10,.15);
+  --red:#FF453A;--red-bg:rgba(255,69,58,.15);
+  --purple:#BF5AF2;
+}
+
+[data-theme="dark"] .sb{background:var(--card);border-right-color:var(--sep)}
+[data-theme="dark"] .sbn.on{background:var(--blue-bg)}
+[data-theme="dark"] .card{background:var(--card)}
+[data-theme="dark"] .ff{border-bottom-color:var(--sep-l);border-right-color:var(--sep-l)}
+[data-theme="dark"] input.ios-in{background:var(--bg);color:var(--t1);border-color:var(--sep)}
+[data-theme="dark"] input.ios-in:focus{border-color:var(--blue)}
+[data-theme="dark"] .combo-tbl td,.combo-tbl th{border-bottom-color:var(--sep-l)}
+[data-theme="dark"] .modal-card{background:var(--card)}
+[data-theme="dark"] .guide-card{background:var(--card)}
+[data-theme="dark"] .guide-act{border-top-color:var(--sep-l)}
+[data-theme="dark"] .dp-card{background:var(--card)}
+[data-theme="dark"] .dp-nav{background:var(--bg);color:var(--t3)}
+[data-theme="dark"] .tst{background:var(--card);color:var(--t1);box-shadow:var(--shm)}
+[data-theme="dark"] .metric{background:var(--card)}
+
+
 html{font-size:16px;-webkit-font-smoothing:antialiased;height:100%}
 body{font-family:'Noto Sans SC',-apple-system,sans-serif;background:var(--bg);color:var(--t1);line-height:1.6;height:100%}
 
@@ -456,4 +487,22 @@ body{font-family:'Noto Sans SC',-apple-system,sans-serif;background:var(--bg);co
   justify-content: flex-end;
   padding-top: 4px;
   border-top: 1px solid var(--sep-l);
-}
+}/* 灵感库卡片增强 */
+.mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:700px){.mc-grid{grid-template-columns:1fr}}
+
+.mc-link-row{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--t4);margin-bottom:6px}
+.mc-link-row .fav{width:14px;height:14px;border-radius:3px;flex-shrink:0;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:9px}
+.mc-link-row a{color:var(--blue);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-link-row a:hover{text-decoration:underline}
+
+/* 视觉锤标签 */
+.mc-visual{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.vtag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:600;
+  background:var(--bg);color:var(--t2);border:1px solid var(--sep)}
+.vtag .vico{font-size:.8rem}
+
+/* 数据概览行 */
+.mc-stats{display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--sep-l);border-bottom:1px solid var(--sep-l);margin-bottom:8px;flex-wrap:wrap}
+.mc-stat{display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--t4)}
+.mc-stat .sv{font-weight:700;color:var(--t1);font-size:.78rem}

@@ -24,7 +24,17 @@
       <button class="sbn" data-t="lib" onclick="go('lib')"><span class="sbn-ic">📚</span> 灵感库</button>
       <button class="sbn" data-t="stats" onclick="go('stats')"><span class="sbn-ic">📊</span> 看板</button>
     </nav>
-    <div class="sb-ft">灵感库 v2.0</div>
+    
+    <div style="padding:10px 14px;border-top:1px solid var(--sep-l)">
+      <button id="themeToggle" onclick="toggleTheme()" style="
+        display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;
+        border:none;background:var(--bg);color:var(--t3);border-radius:8px;
+        font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:.1s
+      ">
+        <span id="themeIcon" style="font-size:1rem">🌙</span>
+        <span id="themeLabel">暗色主题</span>
+      </button>
+    </div><div class="sb-ft">灵感库 v2.0</div>
 
     <!-- 移动端汉堡 -->
     <button class="sb-toggle" onclick="toggleSidebar()">☰</button>
