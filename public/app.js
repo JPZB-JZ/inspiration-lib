@@ -82,6 +82,7 @@ let sSt = '待复刻';
 let fSt = 'all';
 let charts = {};
 let replInspId = null;
+let editingReplId = null;
 let rfEff = '跑量';
 let curPage = 1;
 let statsView = 'analysis';
@@ -362,6 +363,7 @@ function openReplForm(id) {
   const insp = DATA.find(d => d.id === id);
   if (!insp) return;
   replInspId = id;
+  editingReplId = null;
   document.getElementById('replModalInsp').textContent = '为「' + insp.name + '」添加复刻';
   document.getElementById('rfLink').value = '';
   document.getElementById('rfSpend').value = '';
@@ -391,19 +393,36 @@ async function saveReplication() {
   if (!link) { toast('请填写复刻视频链接', 'err'); return; }
 
   try {
-    await fetch('/inspiration/api/replications', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        materialId: replInspId, link,
-        spend: parseFloat(document.getElementById('rfSpend').value) || 0,
-        impressions: parseInt(document.getElementById('rfImp').value) || 0,
-        leads: parseInt(document.getElementById('rfLeads').value) || 0,
-        effect: rfEff,
-        notes: document.getElementById('rfNotes').value.trim(),
-        date: document.getElementById('rfDate').value || td()
-      })
-    });
+    if (editingReplId) {
+      await fetch('/inspiration/api/replications/' + editingReplId, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          link: link,
+          spend: parseFloat(document.getElementById('rfSpend').value) || 0,
+          impressions: parseInt(document.getElementById('rfImp').value) || 0,
+          leads: parseInt(document.getElementById('rfLeads').value) || 0,
+          effect: rfEff,
+          notes: document.getElementById('rfNotes').value.trim(),
+          date: document.getElementById('rfDate').value || td()
+        })
+      });
+      editingReplId = null;
+    } else {
+      await fetch('/inspiration/api/replications', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          materialId: replInspId, link,
+          spend: parseFloat(document.getElementById('rfSpend').value) || 0,
+          impressions: parseInt(document.getElementById('rfImp').value) || 0,
+          leads: parseInt(document.getElementById('rfLeads').value) || 0,
+          effect: rfEff,
+          notes: document.getElementById('rfNotes').value.trim(),
+          date: document.getElementById('rfDate').value || td()
+        })
+      });
+    }
     closeReplForm();
     await refreshData();
     await renderLib();
@@ -523,6 +542,7 @@ function editReplication(matId, repId) {
   var rep = (mat.replications||[]).find(function(r) { return r.id === repId; });
   if (!rep) return;
   replInspId = matId;
+  editingReplId = repId;
   document.getElementById('replModalInsp').textContent = '为「' + mat.name + '」编辑复刻';
   document.getElementById('rfLink').value = rep.link || '';
   document.getElementById('rfSpend').value = rep.spend || '';
@@ -928,7 +948,7 @@ async function renderRepDashboard() {
   if (!container) return;
   container.innerHTML = '<div id="rpFilterBar" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
     '<input type="text" class="ios-in" id="rpSearch" placeholder="🔍 搜索来源灵感 / 视觉锤 / 文案…" style="flex:1;min-width:140px">' +
-    '<button class="rp-fp on" data-e="all" onclick="rpEff=\'all\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--blue);color:#fff;cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">全部</button>' +
+    '<button class="rp-fp" data-e="all" onclick="rpEff=\'all\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--blue);color:#fff;cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">全部</button>' +
     '<button class="rp-fp" data-e="\u8dd1\u91cf" onclick="rpEff=\'\u8dd1\u91cf\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">\u2705 \u8dd1\u91cf</button>' +
     '<button class="rp-fp" data-e="\u4e00\u822c" onclick="rpEff=\'\u4e00\u822c\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">\ud83d\udc4c \u4e00\u822c</button>' +
     '<button class="rp-fp" data-e="\u65e0\u6548\u679c" onclick="rpEff=\'\u65e0\u6548\u679c\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">\u274c \u65e0\u6548\u679c</button>' +
@@ -1011,6 +1031,7 @@ async function renderRepDashboard() {
       '<div style="text-align:center;padding:10px 0"><button class="btn-g" onclick="switchStatsView(\'analysis\')" style="padding:8px 20px">\u2190 \u8fd4\u56de\u6570\u636e\u5206\u6790</button></div>';
 
     container.innerHTML = html;
+  if (rpEff && rpEff !== 'all') { setTimeout(rerenderRp, 10); }
     var inp3 = document.getElementById('rpSearch');
     if (inp3) inp3.oninput = function() { renderRepDashboard(); };
 
