@@ -1164,6 +1164,8 @@ function renderAIResult(reply) {
   const repCount = allRep.length;
   const paoMianReps = allRep.filter(r => r.effect === '跑量');
   const paoMianInsp = DATA.filter(d => (d.replications||[]).some(r => r.effect === '跑量')).length;
+  const totalSpend = allRep.reduce(function(s,r){return s+(r.spend||0);},0);
+  const totalImp = allRep.reduce(function(s,r){return s+(r.impressions||0);},0);
   const formatted = reply.replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^(\d+\.\s)/gm,'<br>$1');
 
   body.innerHTML = `
@@ -1176,6 +1178,12 @@ function renderAIResult(reply) {
       <div class="metric g"><div class="mv">${repCount}</div><div class="ml">复刻次数</div></div>
       <div class="metric o"><div class="mv">${paoMianReps.length}</div><div class="ml">跑量次数</div></div>
       <div class="metric"><div class="mv">${paoMianInsp}</div><div class="ml">跑通灵感</div></div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="mv">¥${(totalSpend).toLocaleString()}</div><div class="ml">总消耗</div></div>
+      <div class="metric"><div class="mv">${(totalImp).toLocaleString()}</div><div class="ml">总展示</div></div>
+      <div class="metric g"><div class="mv">${paoMianReps.length>0?'¥'+Math.round(totalSpend/paoMianReps.length).toLocaleString():'-'}</div><div class="ml">平均跑量成本</div></div>
+      <div class="metric"><div class="mv">${allRep.filter(r=>r.effect==='无效果').length}</div><div class="ml">无效复刻</div></div>
     </div>`;
 }
 
@@ -1187,6 +1195,8 @@ function renderLocalAI() {
   const paoMianReps = allRep.filter(r => r.effect === '跑量');
   const noEffReps = allRep.filter(r => r.effect === '无效果');
   const paoMianInsp = DATA.filter(d => (d.replications||[]).some(r => r.effect === '跑量')).length;
+  const totalSpend = allRep.reduce(function(s,r){return s+(r.spend||0);},0);
+  const totalImp = allRep.reduce(function(s,r){return s+(r.impressions||0);},0);
 
   const lines = [];
   if (paoMianReps.length > 0) {
@@ -1214,10 +1224,24 @@ function renderLocalAI() {
   if (lines.length===0) lines.push('当前数据量不足以生成有效分析，请继续积累复刻记录。');
   const comboTop = comboList.filter(c=>c.total>=1).sort((a,b)=>b.total-a.total).slice(0,8);
 
+  var avgPaoCost = paoMianReps.length > 0 ? '¥' + Math.round(totalSpend / paoMianReps.length).toLocaleString() : '-';
   body.innerHTML = `
     <div class="exec-card" style="background:linear-gradient(135deg,#FF9500,#FF3B30)">
       <div class="el">📊 本地规则分析（AI 未连接）</div>
       <div class="ev" style="font-size:.88rem">${lines.map(t=>'• '+t).join('\n')}<br><br><span style="font-size:.75rem;opacity:.7">提示：配置 DEEPSEEK_API_KEY 后可获得 AI 深度分析</span></div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="mv">${total}</div><div class="ml">总灵感</div></div>
+      <div class="metric g"><div class="mv">${repCount}</div><div class="ml">复刻次数</div></div>
+      <div class="metric o"><div class="mv">${paoMianReps.length}</div><div class="ml">跑量次数</div></div>
+      <div class="metric"><div class="mv">${paoMianInsp}</div><div class="ml">跑通灵感</div></div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="mv">¥${(totalSpend).toLocaleString()}</div><div class="ml">总消耗</div></div>
+      <div class="metric"><div class="mv">${(totalImp).toLocaleString()}</div><div class="ml">总展示</div></div>
+      <div class="metric g"><div class="mv">${avgPaoCost}</div><div class="ml">平均跑量成本</div></div>
+      <div class="metric"><div class="mv">${noEffReps.length}</div><div class="ml">无效复刻</div></div>
+    </div>
     </div>
     <div class="metrics">
       <div class="metric"><div class="mv">${total}</div><div class="ml">总灵感</div></div>
@@ -1312,9 +1336,9 @@ function showGuide() {
 
   var steps = [
     { ic: String.fromCodePoint(0x1f50d), title: '采集灵感', desc: '在「录入」页面粘贴竞品/同行的视频链接，标注视觉锤、文案钩子、客户心理标签，给投手团队沉淀可复制的创意素材。' },
-    { ic: String.fromCodePoint(0x1f4da), title: '管理灵感库', desc: '在「灵感库」浏览所有采集的素材，添加复刻记录（投放链接、消耗、跑量效果）。好灵感直接拿去拍，拍完回来记结果。' },
-    { ic: String.fromCodePoint(0x1f4ca), title: '看板分析', desc: '「看板」自动统计视觉锤成功率、心理标签转化率、最佳组合。一眼看清哪种视觉×哪种话术最容易跑量，指导下一步拍摄方向。' },
-    { ic: String.fromCodePoint(0x1f916), title: 'AI 深度分析', desc: '「AI 分析」调用 DeepSeek 对数据做策略级解读：哪些方向值得重仓、哪些该放弃，像有经验的老投手在带你。' },
+    { ic: String.fromCodePoint(0x1f4da), title: '管理灵感库', desc: '在「灵感库」浏览所有采集的素材，每条灵感可以多次添加复刻记录（投放链接、消耗、跑量效果）。好灵感直接拿去拍，拍完回来记结果。' },
+    { ic: String.fromCodePoint(0x1f4ca), title: '看板分析', desc: '「看板」支持切换「数据分析」和「复刻追踪」两个视图。数据分析自动统计视觉锤成功率、心理标签转化率、最佳组合。复刻追踪展示每条复刻的完整来源链——从哪个灵感复刻的，抄了哪些视觉锤/文案/心理标签，跑了多少量。' },
+    { ic: String.fromCodePoint(0x1f916), title: 'AI 深度分析', desc: '「AI 分析」调用 DeepSeek 基于全部数据（含每条复刻的来源、消耗、展示）做策略级解读：哪些方向值得重仓、哪些该放弃，像有经验的老投手在带你。' },
   ];
 
   var h = '<div class="modal-overlay" onclick="closeGuide()"></div>';

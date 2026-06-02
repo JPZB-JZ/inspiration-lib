@@ -447,20 +447,63 @@ app.post('/api/ai/analyze', async (req, res) => {
       repSummary = Object.entries(effMap).sort((a, b) => b[1].pao - a[1].pao).slice(0, 8).map(([k, v]) => `${k}: 复刻${v.total}次/跑量${v.pao}次`).join('\n');
     }
 
-    const systemPrompt = `你是一个专业的投手策略分析师。职责是根据竞品素材数据输出可执行的投放建议。
+    // 获取每条复刻的完整数据（含来源素材的全部字段）
+    const [replDetails] = await pool.query(
+      `SELECT r.link, r.spend, r.impressions, r.effect, r.notes, r.date,
+              m.name AS insp_name, m.visual AS insp_visual, m.hook AS insp_hook,
+              m.psychology AS insp_psychology, m.brand AS insp_brand, m.category AS insp_category
+       FROM replications r
+       JOIN materials m ON r.material_id = m.id
+       ORDER BY r.created_at DESC`
+    );
 
-数据来源：团队搜集的竞品素材，每条标注了视觉锤（画面特征）、文案钩子、心理标签、以及复刻投放后的效果（跑量/一般/无效果）。
+    let repDetailText = '暂无复刻记录';
+    if (replDetails.length > 0) {
+      repDetailText = replDetails.map(r =>
+        `[${r.date || '无日期'}] 来源:「${r.insp_name}」| 品牌:${r.insp_brand||'-'} | 品类:${r.insp_category||'-'} | 视觉锤:${r.insp_visual||'-'} | 文案钩子:${r.insp_hook||'-'} | 心理标签:${r.insp_psychology||'-'} | 复刻效果:${r.effect} | 消耗:¥${parseFloat(r.spend)||0} | 展示:${r.impressions||0}${r.notes ? ' | 笔记:'+r.notes : ''}`
+      ).join('\n');
+    }
+
+    const systemPrompt = `你是一个专业的投手策略分析师。职责是根据竞品素材的复刻追踪数据输出可执行的投放策略建议。
+
+数据来源：团队搜集的竞品素材（视觉锤/文案钩子/心理标签），以及在抖音/快手等平台复刻投放后的效果数据。
+
+每条复刻记录包含：
+- 来源灵感名称、品牌、品类
+- 来源灵感的视觉锤（画面特征）、文案钩子（开场话术）、心理标签（客户心理触发点）
+- 复刻投放效果（跑量/一般/无效果）、消耗金额、展示量、投手笔记
 
 分析要求：
-1. 评估当前素材库中哪些方向经过了数据验证——哪些视觉锤、心理标签的组合有实际跑量记录
+1. 评估当前素材库中哪些方向经过了数据验证——哪些视觉锤×心理标签的组合有实际跑量记录，结合消耗和展示量判断性价比
 2. 识别有潜力但尚未验证的方向，以及需要放弃的无效方向
 3. 给出下一步具体行动建议：复制什么、拍摄什么、测试什么
+4. 如果有投手笔记中的发现，纳入分析
 
 输出规范：
 - 只陈述基于数据的事实和推论，不做情绪表达
 - 每条结论附上数据依据
 - 没有数据时不强行结论，说明数据不足即可
-- 语言简洁、准确、中性，像一份分析报告`;const userPrompt = `## 当前数据\n\n- 灵感总数：${total} 条\n- 复刻总次数：${repCount} 次\n- 跑量次数：${paoCount} 次\n- 无效果次数：${noCount} 次\n\n## 高频视觉锤\n${topVis || '暂无'}\n\n## 高频心理标签\n${topPsy || '暂无'}\n\n## 复刻效果最好的组合\n${repSummary}`;
+- 语言简洁、准确、中性，像一份分析报告
+- 按「数据概况→已验证的有效方向→待验证方向→放弃方向→行动建议」的顺序组织`;
+
+    const userPrompt = `## 数据概况
+
+- 灵感总数：${total} 条
+- 复刻总次数：${repCount} 次
+- 跑量次数：${paoCount} 次
+- 无效果次数：${noCount} 次
+
+## 高频视觉锤
+${topVis || '暂无'}
+
+## 高频心理标签
+${topPsy || '暂无'}
+
+## 复刻效果最好的组合（视觉锤×心理标签）
+${repSummary}
+
+## 每条复刻的完整数据
+${repDetailText}`;
 
     const reply = await callDeepSeek([
       { role: 'system', content: systemPrompt },
