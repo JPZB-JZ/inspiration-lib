@@ -4,6 +4,16 @@
 // 主题切换
 // ================================================================
 
+
+
+function toggleGroup(el) {
+  var body = el.nextElementSibling;
+  if (!body) return;
+  var isOpen = body.classList.contains('open');
+  body.classList.toggle('open');
+  var arrow = el.querySelector('.fg-arrow');
+  if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+}
 function toggleTheme() {
   var html = document.documentElement;
   var isDark = html.getAttribute(data-theme) === dark;

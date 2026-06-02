@@ -54,31 +54,77 @@
     <section id="t-entry" class="tab on">
       <div class="card">
         <div class="card-h">＋ 采集灵感</div>
-        <div class="fg">
-          <div class="ff full">
-            <label>视频链接 *</label>
-            <input class="ios-in" id="fLink" placeholder="粘贴竞品/同行的视频链接（抖音/快手/小红书等）">
+
+        <!-- 分组1: 基本信息 -->
+        <div class="fg-group">
+          <div class="fg-h" onclick="toggleGroup(this)">
+            <span>📄 基本信息</span>
+            <span class="fg-arrow">▼</span>
           </div>
-          <div class="ff"><label>灵感名称 *</label><input class="ios-in" id="fName" placeholder="例：太阳能路灯-安装对比、路锥-暴力测试"></div>
-          <div class="ff"><label>品牌</label><input class="ios-in" id="fBrand" list="dlBrand" placeholder="选品牌或手动输入" onchange="saveDlOpt('dlBrand',this.value)"></div>
-          <div class="ff"><label>产品类别</label><input class="ios-in" id="fCat" list="dlCat" placeholder="选品类或手动输入" onchange="saveDlOpt('dlCat',this.value)"></div>
-          <div class="ff full"><label>🎨 视觉锤（画面核心特征）</label><input class="ios-in" id="fVisual" list="dlVisual" placeholder="选常见模式或自己写" onchange="saveDlOpt('dlVisual',this.value)"></div>
-          <div class="ff full"><label>💬 文案钩子（开场原话 / 核心话术）</label><input class="ios-in" id="fHook" placeholder="如：农村道路别再摸黑走路了、这种路锥被车压了还能弹回来"></div>
-          <div class="ff full"><label>🧠 客户心理标签（逗号分隔）</label><input class="ios-in" id="fPsych" list="dlPsych" placeholder="选标签或手动输入" onchange="saveDlOpt('dlPsych',this.value)"></div>
-          <div class="ff"><label>日期</label><input type="text" class="ios-in mono" id="fDate" placeholder="年-月-日" readonly onclick="openDatePicker('fDate')"></div>
-          <div class="ff"><label>投手备注</label><input class="ios-in" id="fNote" placeholder="为什么觉得这个能跑量？有什么灵感？"></div>
-        </div>
-        <div class="st-row">
-          <label>灵感状态</label>
-          <div class="pills" id="stG">
-            <button class="pill t-on" data-v="待复刻" onclick="pickSt('待复刻')">待复刻</button>
-            <button class="pill" data-v="已验证" onclick="pickSt('已验证')">已验证</button>
-            <button class="pill" data-v="淘汰" onclick="pickSt('淘汰')">淘汰</button>
+          <div class="fg-body open">
+            <div class="fg">
+              <div class="ff full">
+                <label>视频链接 *</label>
+                <input class="ios-in" id="fLink" placeholder="粘贴竞品/同行的视频链接（抖音/快手/小红书等）">
+              </div>
+              <div class="ff"><label>灵感名称 *</label><input class="ios-in" id="fName" placeholder="例：太阳能路灯-安装对比、路锜-暴力测试"></div>
+              <div class="ff"><label>品牌</label><input class="ios-in" id="fBrand" list="dlBrand" placeholder="选品牌或手动输入" onchange="saveDlOpt('dlBrand',this.value)"></div>
+              <div class="ff"><label>产品类别</label><input class="ios-in" id="fCat" list="dlCat" placeholder="选品类或手动输入" onchange="saveDlOpt('dlCat',this.value)"></div>
+            </div>
           </div>
         </div>
-        <div class="act-row">
-          <button class="btn-m" id="saveBtn" onclick="save()">💾 保存灵感</button>
-          <button class="btn-g" id="cancelBtn" onclick="cancelEdit()" style="display:none">取消编辑</button>
+
+        <!-- 分组2: 创意分析 -->
+        <div class="fg-group">
+          <div class="fg-h" onclick="toggleGroup(this)">
+            <span>🎨 创意分析</span>
+            <span class="fg-arrow">▼</span>
+          </div>
+          <div class="fg-body">
+            <div class="fg">
+              <div class="ff full">
+                <label>🎨 视觉锤（画面核心特征）</label>
+                <input class="ios-in" id="fVisual" list="dlVisual" placeholder="选常见模式或自己写" onchange="saveDlOpt('dlVisual',this.value)">
+                <div class="ff-hint">常见：安装对比、爆力测试、微观特写、数据对比、场景实拍</div>
+              </div>
+              <div class="ff full">
+                <label>💬 文案钩子（开场原话 / 核心话术）</label>
+                <input class="ios-in" id="fHook" placeholder="如：农村道路别再摸黑走路了、这种路锜被车压了还能弹回来">
+                <div class="ff-hint">前三秒的开场白，或核心话术的精缩版</div>
+              </div>
+              <div class="ff full">
+                <label>🧠 客户心理标签（逗号分隔）</label>
+                <input class="ios-in" id="fPsych" list="dlPsych" placeholder="选标签或手动输入" onchange="saveDlOpt('dlPsych',this.value)">
+                <div class="ff-hint">常见：安全焦虑、价格敏感、从众心理、踩坑恐惧、选择粵劳</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 分组3: 投放管理 -->
+        <div class="fg-group">
+          <div class="fg-h" onclick="toggleGroup(this)">
+            <span>💠 投放管理</span>
+            <span class="fg-arrow">▼</span>
+          </div>
+          <div class="fg-body">
+            <div class="fg">
+              <div class="ff"><label>日期</label><input type="text" class="ios-in mono" id="fDate" placeholder="年-月-日" readonly onclick="openDatePicker('fDate')"></div>
+              <div class="ff"><label>投手备注</label><input class="ios-in" id="fNote" placeholder="为什么觉得这个能跑量？有什么灵感？"></div>
+            </div>
+            <div class="st-row">
+              <label>灵感状态</label>
+              <div class="pills" id="stG">
+                <button class="pill t-on" data-v="待复刻" onclick="pickSt('待复刻')">待复刻</button>
+                <button class="pill" data-v="已验证" onclick="pickSt('已验证')">已验证</button>
+                <button class="pill" data-v="淘汰" onclick="pickSt('淘汰')">淘汰</button>
+              </div>
+            </div>
+            <div class="act-row">
+              <button class="btn-m" id="saveBtn" onclick="save()">💾 保存灵感</button>
+              <button class="btn-g" id="cancelBtn" onclick="cancelEdit()" style="display:none">取消编辑</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
