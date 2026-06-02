@@ -14,6 +14,16 @@ function toggleGroup(el) {
   var arrow = el.querySelector('.fg-arrow');
   if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 }
+
+
+function searchAndGo(query) {
+  var inp = document.getElementById('sS');
+  if (inp) inp.value = query;
+  var allBtn = document.querySelector('.pg .fp[onclick*="all"]');
+  if (allBtn) allBtn.click();
+  curPage = 1;
+  go('lib');
+}
 function toggleTheme() {
   var html = document.documentElement;
   var isDark = html.getAttribute(data-theme) === dark;
@@ -559,7 +569,7 @@ async function renderStats() {
         <div class="card-h">🏆 视觉锤成功率排名</div>
         <div class="combo-wrap"><table class="combo-tbl">
           <thead><tr><th>#</th><th>视觉锤</th><th>复刻次数</th><th>跑量次数</th><th>成功率</th></tr></thead>
-          <tbody>${d.visual.map((v,i) => `<tr><td>${i+1}</td><td>${esc(v.name)}</td><td>${v.total}</td><td class="cv">${v.pao}</td><td><span class="rate-badge ${parseInt(v.rate)>=60?'rate-high':parseInt(v.rate)>=30?'rate-mid':'rate-low'}">${v.rate}%</span></td></tr>`).join('')}</tbody>
+          <tbody>${d.visual.map((v,i) => `<tr><td>${i+1}</td><td style="cursor:pointer;color:var(--blue)" onclick="searchAndGo('${esc(v.name)}')">${esc(v.name)}</td><td>${v.total}</td><td class="cv">${v.pao}</td><td><span class="rate-badge ${parseInt(v.rate)>=60?'rate-high':parseInt(v.rate)>=30?'rate-mid':'rate-low'}">${v.rate}%</span></td></tr>`).join('')}</tbody>
         </table></div>
       </div>` : ''}
     `;
@@ -723,7 +733,7 @@ function renderLocalAI() {
       <div class="metric o"><div class="mv">${paoMianReps.length}</div><div class="ml">跑量次数</div></div>
       <div class="metric"><div class="mv">${paoMianInsp}</div><div class="ml">跑通灵感</div></div>
     </div>
-    ${comboTop.length>0 ? `<div class="card"><div class="card-h">🔗 视觉锤 × 心理标签 组合表现</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>#</th><th>组合</th><th>复刻</th><th>跑量</th><th>成功率</th></tr></thead><tbody>${comboTop.map((c,i)=>`<tr><td>${i+1}</td><td>${c.name}</td><td>${c.total}</td><td class="cv">${c.pao}</td><td><span class="rate-badge ${c.rate>=0.6?'rate-high':c.rate>=0.3?'rate-mid':'rate-low'}">${(c.rate*100).toFixed(0)}%</span></td></tr>`).join('')}</tbody></table></div></div>`:''}
+    ${comboTop.length>0 ? `<div class="card"><div class="card-h">🔗 视觉锤 × 心理标签 组合表现</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>#</th><th>组合</th><th>复刻</th><th>跑量</th><th>成功率</th></tr></thead><tbody>${comboTop.map((c,i)=>`<tr><td>${i+1}</td><td style="cursor:pointer;color:var(--blue)" onclick="searchAndGo('${encodeURIComponent(esc(c.name))}')">${c.name}</td><td>${c.total}</td><td class="cv">${c.pao}</td><td><span class="rate-badge ${c.rate>=0.6?'rate-high':c.rate>=0.3?'rate-mid':'rate-low'}">${(c.rate*100).toFixed(0)}%</span></td></tr>`).join('')}</tbody></table></div></div>`:''}
   `;
 }
 
