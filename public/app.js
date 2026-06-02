@@ -869,21 +869,14 @@ async function renderStats() {
       <div class="metrics">
         <div class="metric"><div class="mv">${total}</div><div class="ml">总灵感</div></div>
         <div class="metric g"><div class="mv">${repCount}</div><div class="ml">已复刻
-    <div style="text-align:center;padding:16px 0 8px">
-      <button class="btn-m" style="font-size:.92rem;padding:10px 28px" onclick="startAIAnalysis()">🤖 AI 深度解析</button>
-      <p style="font-size:.72rem;color:var(--t4);margin-top:6px;margin-bottom:0">根据当前库里的数据进行策略分析</p>
-    </div>
-    <div style="text-align:center;padding:16px 0 8px">
-      <button class="btn-m" style="font-size:.92rem;padding:10px 28px" onclick="startAIAnalysis()">🤖 AI 深度解析</button>
-      <p style="font-size:.72rem;color:var(--t4);margin-top:6px;margin-bottom:0">根据当前库里的数据进行策略分析</p>
-    </div>
 
+
+</div>
     <div style="text-align:center;padding:16px 0 8px">
       <button class="btn-m" style="font-size:.92rem;padding:10px 28px" onclick="startAIAnalysis()">🤖 AI 深度解析</button>
       <p style="font-size:.72rem;color:var(--t4);margin-top:6px;margin-bottom:0">根据当前库里的数据进行策略分析</p>
     </div>
-
-</div></div>
+</div>
         <div class="metric o"><div class="mv">${runRate}%</div><div class="ml">跑量率</div></div>
         <div class="metric"><div class="mv">${daiFuKe}</div><div class="ml">待复刻</div></div>
       </div>
