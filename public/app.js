@@ -51,20 +51,16 @@ function showDropdown(dlId, inputEl) {
 
   var builtinOptions = [].slice.call(datalist.querySelectorAll('option')).map(function(o) { return o.value; });
 
+  // Determine builtin: options that existed BEFORE loadDlOpts merged them
+  // Options in localStorage custom items are deletable regardless
   var filter = (inputEl.value || '').trim().toLowerCase();
 
   // Merge, dedupe, filter
   var allOptions = [];
   builtinOptions.forEach(function(v) {
+    var isCustom = saved[dlId] && saved[dlId].includes(v);
     if (!filter || v.toLowerCase().includes(filter)) {
-      allOptions.push({ value: v, builtin: true });
-    }
-  });
-  customItems.forEach(function(v) {
-    if (!filter || v.toLowerCase().includes(filter)) {
-      if (!builtinOptions.includes(v)) {
-        allOptions.push({ value: v, builtin: false });
-      }
+      allOptions.push({ value: v, builtin: !isCustom });
     }
   });
 
