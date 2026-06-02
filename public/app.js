@@ -1454,10 +1454,7 @@ async function renderStats() {
     await renderRepDashboard();
     return;
   }
-  if (statsView === 'suggest') {
-    await renderSuggestions();
-    return;
-  }
+
   const body = document.getElementById('statsBody');
   body.innerHTML = '<div class="empty" style="padding:30px"><p>⏳ 加载中…</p></div>';
 
