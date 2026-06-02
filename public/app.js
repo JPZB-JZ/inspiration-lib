@@ -200,7 +200,7 @@ let replInspId = null;
 let editingReplId = null;
 let rfEff = '跑量';
 let curPage = 1;
-let statsView = 'analysis';
+
 let selectedIds = {};
 let selectAllMode = false;
 const PAGE_SIZE = 20;
@@ -1168,23 +1168,6 @@ async function doExport() {
 // 看板视图切换
 // ================================================================
 
-function switchStatsView(view) {
-  statsView = view;
-  document.querySelectorAll('.st-toggle').forEach(function(b) {
-    b.style.background = 'transparent';
-    b.style.color = 'var(--t3)';
-    b.style.fontWeight = '600';
-    b.style.boxShadow = 'none';
-    if (b.dataset.v === view) {
-      b.style.background = 'var(--card)';
-      b.style.color = 'var(--t)';
-      b.style.fontWeight = '700';
-      b.style.boxShadow = '0 1px 3px rgba(0,0,0,.08)';
-    }
-  });
-  renderStats();
-}
-
 // ================================================================
 // 复刻看板
 // ================================================================
@@ -1320,11 +1303,6 @@ function rerenderRp() {
 // ================================================================
 
 async function renderStats() {
-  if (statsView === 'replication') {
-    await renderRepDashboard();
-    return;
-  }
-
   const body = document.getElementById('statsBody');
   body.innerHTML = '<div class="empty" style="padding:30px"><p>⏳ 加载中…</p></div>';
 
@@ -1357,10 +1335,7 @@ async function renderStats() {
         <div class="metric"><div class="mv">${daiFuKe}</div><div class="ml">待复刻</div></div>
       </div>
 
-    <div style="text-align:center;padding:16px 0 8px">
-      <button class="btn-m" style="font-size:.92rem;padding:10px 28px" onclick="startAIAnalysis()">🤖 AI 深度解析</button>
-      <p style="font-size:.72rem;color:var(--t4);margin-top:6px;margin-bottom:0">根据当前库里的数据进行策略分析</p>
-    </div>
+
       ${daiFuKe > 0 ? `
       <div class="card">
         <div class="card-h">📋 待复刻灵感（${daiFuKe} 条等待拍摄）</div>
