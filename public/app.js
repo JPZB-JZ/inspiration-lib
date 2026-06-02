@@ -1364,44 +1364,17 @@ async function displayAIReport(data) {
     '<div class="metric"><div class="mv">' + (DATA ? DATA.filter(function(d){return d.status==="待复刻";}).length : '-') + '</div><div class="ml">待复刻</div></div>' +
   '</div>';
 
-  // Split analysis content into data analysis and shooting suggestions
-  var analysisHtml = '';
-  var suggestHtml = '';
-
-  var lines = content.split('\n');
-  var inSuggest = false;
-  var analysisLines = [];
-  var suggestLines = [];
-
-  lines.forEach(function(line) {
-    var lower = line.toLowerCase();
-    if (lower.includes('行动建议') || lower.includes('拍摄建议') || lower.includes('下一步') || lower.includes('建议重仓') || lower.includes('建议放弃')) {
-      inSuggest = true;
-      suggestLines.push('');
-      suggestLines.push(line);
-    } else if (lower.includes('数据概况') || lower.includes('已验证') || lower.includes('待验证') || lower.includes('放弃方向')) {
-      inSuggest = false;
-    }
-
-    if (inSuggest) {
-      suggestLines.push(line);
-    } else {
-      analysisLines.push(line);
-    }
-  });
-
-  var formatBlock = function(arr) {
-    return arr.map(function(l) {
-      l = esc(l)
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/^#+ /gm, '')
-        .replace(/^- /gm, '<br>• ');
-      return l;
-    }).join('<br>');
+  // Format the full AI content - it already has structured headers
+  var formatContent = function(text) {
+    return esc(text)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^##\s+/gm, '<div style="font-weight:700;font-size:.95rem;color:var(--t1);margin:16px 0 8px">')
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/^\d+\.\s/gm, '<br><strong>$&</strong>')
+      .replace(/^-\s/gm, '<br>• ');
   };
 
-  analysisHtml = analysisLines.length > 10 ? formatBlock(analysisLines) : formatBlock(lines);
-  suggestHtml = suggestLines.length > 3 ? formatBlock(suggestLines) : '';
+  var formatted = formatContent(content);
 
   var html = '';
 
@@ -1415,19 +1388,10 @@ async function displayAIReport(data) {
   // Metrics
   html += metricsHtml;
 
-  // Data analysis section
+  // Full report in one card
   html += '<div class="card">';
-  html += '<div class="card-h" style="border-bottom:1px solid var(--sep-l);padding-bottom:12px">📊 数据分析</div>';
-  html += '<div style="padding:16px 20px;line-height:1.8;font-size:.85rem">' + analysisHtml + '</div>';
+  html += '<div style="padding:20px 24px;line-height:1.8;font-size:.88rem">' + formatted + '</div>';
   html += '</div>';
-
-  // Shooting suggestions section (if found)
-  if (suggestHtml) {
-    html += '<div class="card" style="border-left:4px solid var(--orange)">';
-    html += '<div class="card-h" style="border-bottom:1px solid var(--sep-l);padding-bottom:12px">🎯 拍摄建议</div>';
-    html += '<div style="padding:16px 20px;line-height:1.8;font-size:.85rem">' + suggestHtml + '</div>';
-    html += '</div>';
-  }
 
   mainEl.innerHTML = html;
 
