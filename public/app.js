@@ -398,6 +398,7 @@ async function saveReplication() {
         materialId: replInspId, link,
         spend: parseFloat(document.getElementById('rfSpend').value) || 0,
         impressions: parseInt(document.getElementById('rfImp').value) || 0,
+        leads: parseInt(document.getElementById('rfLeads').value) || 0,
         effect: rfEff,
         notes: document.getElementById('rfNotes').value.trim(),
         date: document.getElementById('rfDate').value || td()
@@ -527,6 +528,7 @@ function editReplication(matId, repId) {
   document.getElementById('rfSpend').value = rep.spend || '';
   document.getElementById('rfImp').value = rep.impressions || '';
   document.getElementById('rfDate').value = rep.date || '';
+  document.getElementById('rfLeads').value = rep.leads || '';
   document.getElementById('rfNotes').value = rep.notes || '';
   rfEff = rep.effect || '跑量';
   document.querySelectorAll('#rfEffG .pill').forEach(function(b) { b.className = 'pill'; if (b.dataset.v === rfEff) b.classList.add('r-on'); });
@@ -956,9 +958,11 @@ async function renderRepDashboard() {
     document.getElementById('rpCount').textContent = '\u5171 ' + data.length + ' \u6761';
 
     var totalSpend = 0;
+    var totalLeads = 0;
     var effCount = {};
     data.forEach(function(r) {
       totalSpend += r.spend;
+      totalLeads += r.leads || 0;
       effCount[r.effect] = (effCount[r.effect] || 0) + 1;
     });
     var paoCount = effCount['\u8dd1\u91cf'] || 0;
@@ -967,6 +971,7 @@ async function renderRepDashboard() {
     var html = '<div class="metrics">' +
       '<div class="metric"><div class="mv">' + data.length + '</div><div class="ml">\u590d\u523b\u603b\u6b21\u6570</div></div>' +
       '<div class="metric g"><div class="mv">' + paoCount + '</div><div class="ml">\u8dd1\u91cf\u6b21\u6570</div></div>' +
+    '<div class="metric"><div class="mv">' + totalLeads.toLocaleString() + '</div><div class="ml">\u7ebf\u7d22\u6570</div></div>' +
       '<div class="metric o"><div class="mv">' + paoRate + '%</div><div class="ml">\u8dd1\u91cf\u7387</div></div>' +
       '<div class="metric"><div class="mv">\u00a5' + totalSpend.toLocaleString() + '</div><div class="ml">\u603b\u6d88\u8017</div></div>' +
       '</div>';
@@ -980,7 +985,7 @@ async function renderRepDashboard() {
 
     html += '<div class="card"><div class="card-h">\ud83d\udd04 \u590d\u523b\u8ffd\u8e2a\u6e05\u5355</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr>' +
       '<th>\u65e5\u671f</th><th>\u6765\u6e90\u7075\u611f</th><th>\u590d\u523b\u94fe\u63a5</th><th>\u89c6\u89c9\u9524</th><th>\u6587\u6848\u94a9\u5b50</th><th>\u5fc3\u7406\u6807\u7b7e</th>' +
-      '<th>\u6d88\u8017</th><th>\u5c55\u793a</th><th>\u6548\u679c</th><th>\u7b14\u8bb0</th></tr></thead><tbody>';
+      '<th>\u6d88\u8017</th><th>\u5c55\u793a</th><th>\u7ebf\u7d22</th><th>\u7ebf\u7d22\u6210\u672c</th><th>\u6548\u679c</th><th>\u7b14\u8bb0</th></tr></thead><tbody>';
 
     data.forEach(function(r) {
       var effEmoji = {'\u8dd1\u91cf':'\u2705','\u4e00\u822c':'\ud83d\udc4c','\u65e0\u6548\u679c':'\u274c'};
@@ -996,6 +1001,8 @@ async function renderRepDashboard() {
         '<td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspPsychology) + '">' + esc(r.inspPsychology || '-') + '</td>' +
         '<td style="text-align:right;white-space:nowrap">\u00a5' + (r.spend || 0).toLocaleString() + '</td>' +
         '<td style="text-align:right;white-space:nowrap">' + (r.impressions || 0).toLocaleString() + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">' + ((r.leads||0).toLocaleString()) + '</td>' +
+        '<td style="text-align:right;white-space:nowrap;font-size:.72rem">' + (r.leads > 0 ? '\u00a5' + Math.round((r.spend||0)/(r.leads||1)).toLocaleString() : '-') + '</td>' +
         '<td><span style="color:' + effColor[r.effect] + ';font-weight:600;font-size:.78rem">' + (effEmoji[r.effect]||'') + ' ' + esc(r.effect) + '</span></td>' +
         '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t4);font-size:.75rem" title="' + esc(r.notes) + '">' + esc(r.notes||'-') + '</td>' +
         '</tr>';
@@ -1039,10 +1046,136 @@ function rerenderRp() {
   });
   renderRepDashboard();
 }
+// ================================================================
+// 拍摄建议
+// ================================================================
+
+async function renderSuggestions() {
+  const container = document.getElementById('statsBody');
+  if (!container) return;
+  container.innerHTML = '<div class="empty" style="padding:30px"><p>⏳ 加载中…</p></div>';
+
+  try {
+    const res = await fetch('/inspiration/api/suggestions');
+    if (!res.ok) throw new Error('加载失败');
+    const d = await res.json();
+
+    if (!d.suggestions || !d.suggestions.length) {
+      container.innerHTML = '<div class="empty"><div class="ei">🎯</div><p>没有待复刻的灵感</p><p class="hint">录入新灵感后，系统会根据历史数据自动给出拍摄优先级建议</p></div>';
+      return;
+    }
+
+    // 统计汇总
+    const highCount = d.suggestions.filter(s => s.level === '高').length;
+    const midCount = d.suggestions.filter(s => s.level === '中').length;
+    const lowCount = d.suggestions.filter(s => s.level === '低').length;
+
+    var html = '<div class="metrics">';
+    html += '<div class="metric"><div class="mv">' + d.suggestions.length + '</div><div class="ml">待拍灵感</div></div>';
+    html += '<div class="metric g"><div class="mv">' + highCount + '</div><div class="ml">高优先级</div></div>';
+    html += '<div class="metric o"><div class="mv">' + midCount + '</div><div class="ml">中优先级</div></div>';
+    html += '<div class="metric"><div class="mv">' + lowCount + '</div><div class="ml">低优先级</div></div>';
+    html += '</div>';
+
+    html += '<div style="text-align:center;padding:0 0 16px;font-size:.78rem;color:var(--t4)">基于视觉锤/心理标签的历史跑量率和线索成本自动评分</div>';
+
+    // 排名列表
+    d.suggestions.forEach(function(s) {
+      var levelColors = {'高':'#34C759','中':'#FF9500','低':'#FF3B30'};
+      html += '<div class="card" style="border-left:4px solid ' + levelColors[s.level] + '">';
+      html += '<div class="card-h" style="display:flex;align-items:center;gap:8px">';
+      html += '<span style="font-size:1.1rem">' + esc(s.name) + '</span>';
+      html += '<span style="margin-left:auto;background:' + levelColors[s.level] + ';color:#fff;padding:2px 12px;border-radius:20px;font-size:.72rem;font-weight:700">' + s.level + ' 优先级</span>';
+      html += '</div>';
+      
+      // 基本信息
+      html += '<div style="padding:0 4px 8px;color:var(--t4);font-size:.78rem">';
+      if (s.brand) html += esc(s.brand) + (s.category ? ' · ' + esc(s.category) : '') + ' · ';
+      html += '采集于 ' + (s.date || '-');
+      html += '</div>';
+
+      // 关键元素
+      html += '<div style="padding:0 4px 12px;display:flex;gap:6px;flex-wrap:wrap">';
+      if (s.visual) html += '<span class="vtag"><span class="vico">🎨</span>' + esc(s.visual) + '</span>';
+      if (s.hook) html += '<span class="vtag"><span class="vico">💬</span>' + esc(s.hook) + '</span>';
+      if (s.psychology) {
+        s.psychology.split(/[,，、/|]/).forEach(function(p) {
+          html += '<span class="vtag" style="background:var(--bg2)">🧠 ' + esc(p.trim()) + '</span>';
+        });
+      }
+      html += '</div>';
+
+      // 推荐理由
+      if (s.reasons && s.reasons.length) {
+        html += '<div style="padding:8px 4px;background:var(--bg2);border-radius:10px;margin-bottom:8px">';
+        html += '<div style="font-size:.72rem;color:var(--t4);margin-bottom:4px">推荐理由</div>';
+        s.reasons.forEach(function(r) {
+          html += '<div style="font-size:.78rem;padding:3px 0;color:var(--t2)">✅ ' + esc(r) + '</div>';
+        });
+        html += '</div>';
+      }
+
+      // 匹配的历史组合
+      if (s.matchedCombos && s.matchedCombos.length) {
+        html += '<div style="font-size:.72rem;color:var(--t4);margin-bottom:4px">已验证的历史组合</div>';
+        s.matchedCombos.forEach(function(c) {
+          var rate = c.total > 0 ? (c.pao / c.total * 100).toFixed(0) : 0;
+          html += '<span style="display:inline-block;background:var(--card);border:1px solid var(--sep);border-radius:8px;padding:4px 10px;margin:2px;font-size:.72rem">🎯 ' + esc(c.name) + ' <span style="color:var(--green)">' + c.pao + '/' + c.total + ' 跑量 </span>' + rate + '%</span>';
+        });
+      }
+
+      // 操作按钮
+      html += '<div style="padding:8px 0 0"><button class="btn-sm" onclick="switchStatsView(\'analysis\')">📊 看详细数据</button></div>';
+
+      html += '</div>';
+    });
+
+    // 底部历史数据参考
+    html += '<div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">';
+    if (d.visStats && d.visStats.length) {
+      html += '<div class="card" style="flex:1;min-width:200px"><div class="card-h">🎨 视觉锤历史表现</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>视觉锤</th><th>复刻</th><th>跑量</th><th>线索</th></tr></thead><tbody>';
+      d.visStats.forEach(function(v) {
+        html += '<tr><td>' + esc(v.name) + '</td><td>' + v.total + '</td><td class="cv">' + v.pao + '</td><td>' + (v.totalLeads||0) + '</td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+    if (d.psychStats && d.psychStats.length) {
+      html += '<div class="card" style="flex:1;min-width:200px"><div class="card-h">🧠 心理标签历史表现</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>心理标签</th><th>复刻</th><th>跑量</th><th>线索</th></tr></thead><tbody>';
+      d.psychStats.forEach(function(p) {
+        html += '<tr><td>' + esc(p.name) + '</td><td>' + p.total + '</td><td class="cv">' + p.pao + '</td><td>' + (p.totalLeads||0) + '</td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+    html += '</div>';
+
+    html += '<div style="text-align:center;padding:12px 0"><button class="btn-g" onclick="switchStatsView(\'analysis\')">← 返回数据分析</button></div>';
+
+    container.innerHTML = html;
+
+    // 数值动画
+    var mvs = container.querySelectorAll('.metric .mv');
+    mvs.forEach(function(el) {
+      var val = parseInt(el.textContent) || 0;
+      if (val > 0) {
+        var obj = { v: 0 };
+        gsap.to(obj, { v: val, duration: 0.6, ease: 'power2.out', onUpdate: function() { el.textContent = Math.round(obj.v); }});
+      }
+    });
+
+  } catch (err) {
+    container.innerHTML = '<div class="empty"><p>❌ 加载失败: ' + err.message + '</p></div>';
+  }
+}
+
+
 
 async function renderStats() {
   if (statsView === 'replication') {
     await renderRepDashboard();
+    return;
+  }
+  if (statsView === 'suggest') {
+    await renderSuggestions();
     return;
   }
   const body = document.getElementById('statsBody');
@@ -1058,14 +1191,22 @@ async function renderStats() {
       return;
     }
 
-    const { total, repCount, paoMian, daiFuKe } = d.metrics;
+    const { total, repCount, paoMian, daiFuKe, totalLeads, totalSpend } = d.metrics;
     const runRate = repCount > 0 ? ((paoMian / repCount) * 100).toFixed(0) : 0;
+    const leadsDisplay = totalLeads ? totalLeads.toLocaleString() : 0;
+    const spendDisplay = totalSpend ? '¥' + totalSpend.toLocaleString() : '¥0';
 
     body.innerHTML = `
       <div class="metrics">
         <div class="metric"><div class="mv">${total}</div><div class="ml">总灵感</div></div>
         <div class="metric g"><div class="mv">${repCount}</div><div class="ml">已复刻</div></div>
         <div class="metric o"><div class="mv">${runRate}%</div><div class="ml">跑量率</div></div>
+        <div class="metric"><div class="mv">${daiFuKe}</div><div class="ml">待复刻</div></div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="mv">${spendDisplay}</div><div class="ml">总消耗</div></div>
+        <div class="metric"><div class="mv">${leadsDisplay}</div><div class="ml">总线索</div></div>
+        <div class="metric g"><div class="mv">${paoMian}</div><div class="ml">跑通灵感</div></div>
         <div class="metric"><div class="mv">${daiFuKe}</div><div class="ml">待复刻</div></div>
       </div>
 

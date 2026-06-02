@@ -108,7 +108,7 @@ async function getAllMaterials(search, brand, status) {
     replMap[r.material_id].push({
       id: r.id, link: r.link || '', spend: parseFloat(r.spend) || 0,
       impressions: r.impressions || 0, effect: r.effect || '一般',
-      notes: r.notes || '', date: r.date ? r.date.toISOString().split('T')[0] : '',
+      notes: r.notes || '', leads: r.leads || 0, date: r.date ? r.date.toISOString().split('T')[0] : '',
     });
   });
 
@@ -185,18 +185,33 @@ app.delete('/api/materials/:id', async (req, res) => {
 
 app.post('/api/replications', async (req, res) => {
   try {
-    const { materialId, link, spend, impressions, effect, notes, date } = req.body;
+    const { materialId, link, spend, impressions, leads, effect, notes, date } = req.body;
     if (!materialId) return res.status(400).json({ error: '缺少 materialId' });
     const id = 'r_' + uid();
     await pool.query(
-      'INSERT INTO replications (id, material_id, link, spend, impressions, effect, notes, date) VALUES (?,?,?,?,?,?,?,?)',
+      'INSERT INTO replications (id, material_id, link, spend, impressions, leads, effect, notes, date) VALUES (?,?,?,?,?,?,?,?,?)',
       [id, materialId, link || '', parseFloat(spend) || 0, parseInt(impressions) || 0,
-       effect || '一般', notes || '', date || null]
+       parseInt(leads) || 0, effect || '一般', notes || '', date || null]
     );
     await pool.query("UPDATE materials SET status='已验证' WHERE id=? AND status='待复刻'", [materialId]);
     res.status(201).json(await getAllMaterials('', '', 'all'));
   } catch (err) {
     res.status(500).json({ error: '保存复刻失败: ' + err.message });
+  }
+});
+
+app.put('/api/replications/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { link, spend, impressions, leads, effect, notes, date } = req.body;
+    await pool.query(
+      'UPDATE replications SET link=?, spend=?, impressions=?, leads=?, effect=?, notes=?, date=? WHERE id=?',
+      [link || '', parseFloat(spend) || 0, parseInt(impressions) || 0,
+       parseInt(leads) || 0, effect || '一般', notes || '', date || null, id]
+    );
+    res.json(await getAllMaterials('', '', 'all'));
+  } catch (err) {
+    res.status(500).json({ error: '更新复刻失败: ' + err.message });
   }
 });
 
@@ -217,7 +232,7 @@ app.get('/api/replications/dashboard', async (req, res) => {
   try {
     const { search, effect, dateFrom, dateTo } = req.query;
     const [repls] = await pool.query(
-      `SELECT r.id, r.material_id, r.link, r.spend, r.impressions, r.effect, r.notes, r.date, r.created_at,
+      `SELECT r.id, r.material_id, r.link, r.spend, r.impressions, r.leads, r.effect, r.notes, r.date, r.created_at,
               m.name AS insp_name, m.brand AS insp_brand, m.category AS insp_category,
               m.visual AS insp_visual, m.hook AS insp_hook, m.psychology AS insp_psychology
        FROM replications r
@@ -228,6 +243,7 @@ app.get('/api/replications/dashboard', async (req, res) => {
     let data = repls.map(r => ({
       id: r.id, materialId: r.material_id, link: r.link || '',
       spend: parseFloat(r.spend) || 0, impressions: r.impressions || 0,
+      leads: r.leads || 0,
       effect: r.effect || '一般', notes: r.notes || '',
       date: r.date ? r.date.toISOString().split('T')[0] : '',
       createdAt: r.created_at ? r.created_at.toISOString() : '',
@@ -257,51 +273,139 @@ app.get('/api/replications/dashboard', async (req, res) => {
   }
 });
 
+
 // ================================================================
-// 复刻看板 API
+// 批量操作 API
 // ================================================================
 
-app.get('/api/replications/dashboard', async (req, res) => {
+app.post('/api/materials/batch-status', async (req, res) => {
   try {
-    const { search, effect, dateFrom, dateTo } = req.query;
-    const [repls] = await pool.query(
-      `SELECT r.id, r.material_id, r.link, r.spend, r.impressions, r.effect, r.notes, r.date, r.created_at,
-              m.name AS insp_name, m.brand AS insp_brand, m.category AS insp_category,
-              m.visual AS insp_visual, m.hook AS insp_hook, m.psychology AS insp_psychology
-       FROM replications r
-       JOIN materials m ON r.material_id = m.id
-       ORDER BY r.created_at DESC`
-    );
-
-    let data = repls.map(r => ({
-      id: r.id, materialId: r.material_id, link: r.link || '',
-      spend: parseFloat(r.spend) || 0, impressions: r.impressions || 0,
-      effect: r.effect || '一般', notes: r.notes || '',
-      date: r.date ? r.date.toISOString().split('T')[0] : '',
-      createdAt: r.created_at ? r.created_at.toISOString() : '',
-      inspName: r.insp_name, inspBrand: r.insp_brand || '',
-      inspCategory: r.insp_category || '', inspVisual: r.insp_visual || '',
-      inspHook: r.insp_hook || '', inspPsychology: r.insp_psychology || '',
-    }));
-
-    // 筛选
-    if (search) {
-      const s = search.toLowerCase();
-      data = data.filter(d =>
-        (d.inspName||'').toLowerCase().includes(s) ||
-        (d.inspVisual||'').toLowerCase().includes(s) ||
-        (d.inspHook||'').toLowerCase().includes(s) ||
-        (d.inspPsychology||'').toLowerCase().includes(s) ||
-        (d.inspBrand||'').toLowerCase().includes(s)
-      );
-    }
-    if (effect && effect !== 'all') data = data.filter(d => d.effect === effect);
-    if (dateFrom) data = data.filter(d => d.date >= dateFrom);
-    if (dateTo) data = data.filter(d => d.date <= dateTo);
-
-    res.json(data);
+    const { ids, status } = req.body;
+    if (!ids || !ids.length || !status) return res.status(400).json({ error: '参数不完整' });
+    await pool.query('UPDATE materials SET status=? WHERE id IN (' + ids.map(() => '?').join(',') + ')', [status, ...ids]);
+    res.json(await getAllMaterials('', '', 'all'));
   } catch (err) {
-    res.status(500).json({ error: '查询失败: ' + err.message });
+    res.status(500).json({ error: '批量更新失败: ' + err.message });
+  }
+});
+
+// ================================================================
+// 拍摄建议 API
+// ================================================================
+
+app.get('/api/suggestions', async (req, res) => {
+  try {
+    const data = await getAllMaterials('', '', 'all');
+    const pending = data.filter(d => d.status === '待复刻');
+    const allRep = data.flatMap(d => (d.replications || []).map(r => ({ ...r, inspName: d.name, visual: d.visual, hook: d.hook, psych: d.psychology })));
+
+    // 统计每个视觉锤/心理标签的历史跑量率
+    const visStats = {};
+    const psychStats = {};
+    const comboStats = {};
+    allRep.forEach(r => {
+      const v = (r.visual || '').trim();
+      if (v) {
+        if (!visStats[v]) visStats[v] = { total: 0, pao: 0, no: 0, totalLeads: 0, totalSpend: 0 };
+        visStats[v].total++;
+        if (r.effect === '跑量') visStats[v].pao++;
+        if (r.effect === '无效果') visStats[v].no++;
+        visStats[v].totalLeads += r.leads || 0;
+        visStats[v].totalSpend += r.spend || 0;
+      }
+      (r.psych || '').split(/[,，、/|]/).map(s => s.trim()).filter(Boolean).forEach(p => {
+        if (!psychStats[p]) psychStats[p] = { total: 0, pao: 0, no: 0, totalLeads: 0, totalSpend: 0 };
+        psychStats[p].total++;
+        if (r.effect === '跑量') psychStats[p].pao++;
+        if (r.effect === '无效果') psychStats[p].no++;
+        psychStats[p].totalLeads += r.leads || 0;
+        psychStats[p].totalSpend += r.spend || 0;
+      });
+      if (v && r.psych) {
+        r.psych.split(/[,，、/|]/).map(s => s.trim()).filter(Boolean).forEach(p => {
+          const k = v + ' × ' + p;
+          if (!comboStats[k]) comboStats[k] = { name: k, visual: v, psych: p, total: 0, pao: 0, totalLeads: 0, totalSpend: 0 };
+          comboStats[k].total++;
+          if (r.effect === '跑量') comboStats[k].pao++;
+          comboStats[k].totalLeads += r.leads || 0;
+          comboStats[k].totalSpend += r.spend || 0;
+        });
+      }
+    });
+
+    const suggestions = pending.map(d => {
+      let score = 0;
+      let reasons = [];
+      let matchedCombos = [];
+
+      // 检查视觉锤历史
+      const vs = (d.visual || '').trim();
+      if (vs && visStats[vs]) {
+        const s = visStats[vs];
+        const rate = s.total > 0 ? (s.pao / s.total) : 0;
+        if (rate >= 0.5) { score += 3; reasons.push(`视觉锤「${vs}」历史跑量率 ${(rate*100).toFixed(0)}%`); }
+        else if (rate > 0) { score += 1; reasons.push(`视觉锤「${vs}」有 ${s.pao} 次跑量记录`); }
+        else if (s.no >= 2) { score -= 2; reasons.push(`⚠️ 视觉锤「${vs}」有 ${s.no} 次无效果记录`); }
+        if (s.totalLeads > 0 && s.totalSpend > 0) {
+          const cpl = Math.round(s.totalSpend / s.totalLeads);
+          if (cpl < 500) { score += 2; reasons.push(`线索成本低（¥${cpl}/条）`); }
+        }
+      }
+
+      // 检查心理标签
+      const psyTags = (d.psychology || '').split(/[,，、/|]/).map(s => s.trim()).filter(Boolean);
+      psyTags.forEach(p => {
+        if (psychStats[p]) {
+          const s = psychStats[p];
+          const rate = s.total > 0 ? (s.pao / s.total) : 0;
+          if (rate >= 0.5) { score += 2; reasons.push(`心理标签「${p}」跑量率 ${(rate*100).toFixed(0)}%`); }
+          else if (rate > 0) { score += 1; reasons.push(`心理标签「${p}」有跑量记录`); }
+        }
+      });
+
+      // 检查组合
+      if (vs && psyTags.length) {
+        psyTags.forEach(p => {
+          const k = vs + ' × ' + p;
+          if (comboStats[k]) {
+            const c = comboStats[k];
+            matchedCombos.push({ name: k, pao: c.pao, total: c.total, leads: c.totalLeads, spend: c.totalSpend });
+            if (c.pao >= 1 && c.total > 0) {
+              const rate = c.pao / c.total;
+              if (rate >= 0.5) { score += 3; reasons.push(`组合「${k}」跑量率 ${(rate*100).toFixed(0)}%`); }
+            }
+          }
+        });
+      }
+
+      // 衰减：采集太久未复刻
+      if (d.date) {
+        const days = Math.floor((Date.now() - new Date(d.date).getTime()) / 86400000);
+        if (days > 30) score -= 1;
+      }
+
+      let level, color;
+      if (score >= 5) { level = '高'; color = '#34C759'; }
+      else if (score >= 2) { level = '中'; color = '#FF9500'; }
+      else { level = '低'; color = '#FF3B30'; }
+
+      return {
+        id: d.id, name: d.name, visual: d.visual, hook: d.hook,
+        psychology: d.psychology, brand: d.brand, category: d.category,
+        date: d.date, note: d.note,
+        score, level, color, reasons: reasons.slice(0, 3), matchedCombos: matchedCombos.slice(0, 3),
+      };
+    });
+
+    suggestions.sort((a, b) => b.score - a.score);
+
+    res.json({
+      suggestions,
+      visStats: Object.entries(visStats).map(([k, v]) => ({ name: k, ...v })).sort((a, b) => b.pao - a.pao).slice(0, 10),
+      psychStats: Object.entries(psychStats).map(([k, v]) => ({ name: k, ...v })).sort((a, b) => b.pao - a.pao).slice(0, 10),
+    });
+  } catch (err) {
+    res.status(500).json({ error: '获取建议失败: ' + err.message });
   }
 });
 
@@ -368,6 +472,8 @@ app.get('/api/analysis', async (req, res) => {
     const daiFuKe = data.filter(d => d.status === '待复刻').length;
 
     const effCounts = {};
+    const totalLeads = allRep.reduce((s, r) => s + (r.leads||0), 0);
+    const totalSpend = allRep.reduce((s, r) => s + (r.spend||0), 0);
     allRep.forEach(r => { effCounts[r.effect] = (effCounts[r.effect] || 0) + 1; });
 
     const visMap = {};
@@ -403,7 +509,7 @@ app.get('/api/analysis', async (req, res) => {
     });
     const combos = Object.values(comboMap).sort((a, b) => b.total - a.total).slice(0, 10);
 
-    res.json({ metrics: { total, repCount, paoMian, daiFuKe }, visual, psychology, combos, effCounts, pending: data.filter(d => d.status === '待复刻').slice(0, 8) });
+    res.json({ metrics: { total, repCount, paoMian, daiFuKe, totalLeads, totalSpend }, visual, psychology, combos, effCounts, pending: data.filter(d => d.status === '待复刻').slice(0, 8) });
   } catch (err) {
     res.status(500).json({ error: '分析失败: ' + err.message });
   }

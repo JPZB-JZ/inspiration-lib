@@ -35,7 +35,7 @@
         <span id="themeIcon" style="font-size:1rem">🌙</span>
         <span id="themeLabel">暗色主题</span>
       </button>
-    </div><div class="sb-ft">灵感库 v2.0</div>
+    </div><div class="sb-ft">灵感库 v2.1</div>
 
     <!-- 移动端汉堡 -->
     <button class="sb-toggle" onclick="toggleSidebar()">☰</button>
@@ -161,6 +161,7 @@
       <div class="stats-toggle" style="display:flex;gap:0;margin:0 0 16px;background:var(--bg2);border-radius:12px;padding:4px;border:1px solid var(--sep)">
         <button class="st-toggle on" data-v="analysis" onclick="switchStatsView('analysis')" style="flex:1;padding:8px 16px;border:none;border-radius:10px;background:var(--card);color:var(--t);font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.08)">📊 数据分析</button>
         <button class="st-toggle" data-v="replication" onclick="switchStatsView('replication')" style="flex:1;padding:8px 16px;border:none;border-radius:10px;background:transparent;color:var(--t3);font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;transition:.15s">🔄 复刻追踪</button>
+        <button class="st-toggle" data-v="suggest" onclick="switchStatsView('suggest')" style="flex:1;padding:8px 16px;border:none;border-radius:10px;background:transparent;color:var(--t3);font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;transition:.15s">🎯 拍摄建议</button>
       </div>
       <div id="statsBody"></div>
     </section>
@@ -185,6 +186,7 @@
         <div class="ff"><label>消耗金额（元）</label><input type="number" class="ios-in mono" id="rfSpend" placeholder="0"></div>
         <div class="ff"><label>展示量</label><input type="number" class="ios-in mono" id="rfImp" placeholder="0"></div>
         <div class="ff"><label>复刻日期</label><input type="text" class="ios-in mono" id="rfDate" placeholder="年-月-日" readonly onclick="openDatePicker('rfDate')"></div>
+        <div class="ff"><label>获线索数</label><input type="number" class="ios-in mono" id="rfLeads" placeholder="0"></div>
         <div class="ff">
           <label>投放效果</label>
           <div class="pills" id="rfEffG">

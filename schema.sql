@@ -31,9 +31,13 @@ CREATE TABLE replications (
   impressions   INT DEFAULT 0 COMMENT '展示量',
   effect        VARCHAR(20) DEFAULT '一般' COMMENT '跑量/一般/无效果',
   notes         TEXT COMMENT '投手笔记',
+  leads         INT DEFAULT 0 COMMENT '获线索数',
   date          DATE DEFAULT NULL COMMENT '复刻日期',
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='复刻记录表';
 
 CREATE INDEX idx_material_id ON replications(material_id);
+
+-- v2.1 migration: 获线索数
+ALTER TABLE replications ADD COLUMN leads INT DEFAULT 0 COMMENT '获线索数';
