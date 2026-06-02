@@ -1060,7 +1060,25 @@ async function renderSuggestions() {
     if (!res.ok) throw new Error('加载失败');
     const d = await res.json();
 
-    if (!d.suggestions || !d.suggestions.length) {
+    // 如果有AI生成的拍摄建议，优先展示
+    if (d.aiSuggestion && d.aiSuggestion.content) {
+      var aiHtml = '<div class="card" style="border-left:4px solid var(--orange);margin-bottom:16px">' +
+        '<div class="card-h" style="border-bottom:1px solid var(--sep-l);padding-bottom:12px">🤖 AI 拍摄建议（' + esc(d.aiSuggestion.title || '最新分析') + '）</div>' +
+        '<div style="padding:16px 20px;line-height:1.8;font-size:.85rem">' +
+          esc(d.aiSuggestion.content).replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>') +
+        '</div>' +
+        '<div style="padding:0 20px 14px;font-size:.72rem;color:var(--t5)">生成于 ' + (d.aiSuggestion.createdAt ? d.aiSuggestion.createdAt.slice(0,10) : '') +
+        ' · <a href="javascript:switchStatsView(\'ai\')" style="color:var(--blue);text-decoration:none">查看完整报告 →</a></div>' +
+      '</div>';
+
+      // Also show rule-based suggestions below as reference
+      if (!d.suggestions || !d.suggestions.length) {
+        container.innerHTML = aiHtml + '<div class="empty" style="margin-top:12px"><p>没有待复刻的灵感</p></div>';
+        return;
+      }
+      // Show AI + rule-based together
+      container.innerHTML = aiHtml;
+    } else if (!d.suggestions || !d.suggestions.length) {
       container.innerHTML = '<div class="empty"><div class="ei">🎯</div><p>没有待复刻的灵感</p><p class="hint">录入新灵感后，系统会根据历史数据自动给出拍摄优先级建议</p></div>';
       return;
     }

@@ -295,6 +295,20 @@ app.post('/api/materials/batch-status', async (req, res) => {
 
 app.get('/api/suggestions', async (req, res) => {
   try {
+    // 获取最新AI报告中的拍摄建议
+    const [aiReports] = await pool.query(
+      "SELECT id, title, suggestions, created_at FROM ai_reports WHERE suggestions != '' ORDER BY created_at DESC LIMIT 1"
+    );
+    let aiSuggestion = null;
+    if (aiReports.length > 0 && aiReports[0].suggestions) {
+      const r = aiReports[0];
+      aiSuggestion = {
+        id: r.id, title: r.title,
+        content: r.suggestions,
+        createdAt: r.created_at ? r.created_at.toISOString() : '',
+      };
+    }
+
     const data = await getAllMaterials('', '', 'all');
     const pending = data.filter(d => d.status === '待复刻');
     const allRep = data.flatMap(d => (d.replications || []).map(r => ({ ...r, inspName: d.name, visual: d.visual, hook: d.hook, psych: d.psychology })));
@@ -401,6 +415,7 @@ app.get('/api/suggestions', async (req, res) => {
 
     res.json({
       suggestions,
+      aiSuggestion,
       visStats: Object.entries(visStats).map(([k, v]) => ({ name: k, ...v })).sort((a, b) => b.pao - a.pao).slice(0, 10),
       psychStats: Object.entries(psychStats).map(([k, v]) => ({ name: k, ...v })).sort((a, b) => b.pao - a.pao).slice(0, 10),
     });
@@ -627,12 +642,23 @@ ${repDetailText}`;
       { role: 'user', content: userPrompt },
     ], key);
 
+    // 从回复中提取拍摄建议段落
+    let suggestionsText = '';
+    const suggestMatch = reply.match(/##\s*[🎯]*\s*拍摄建议[\s\S]*?(?=##|$)/);
+    if (suggestMatch) {
+      suggestionsText = suggestMatch[0].trim();
+    } else {
+      // 尝试找行动建议段落
+      const actionMatch = reply.match(/##\s*[🎯]*\s*(行动建议|下一步)[\s\S]*?(?=##|$)/);
+      if (actionMatch) suggestionsText = actionMatch[0].trim();
+    }
+
     // 保存报告
     const reportId = 'ai_' + uid();
     const title = 'AI分析 ' + new Date().toISOString().slice(0, 10) + ' (' + replDetails.length + '条复刻)';
     await pool.query(
       'INSERT INTO ai_reports (id, title, content, suggestions, data_snapshot) VALUES (?,?,?,?,?)',
-      [reportId, title, reply, '', userPrompt]
+      [reportId, title, reply, suggestionsText, userPrompt]
     );
 
     res.json({ id: reportId, content: reply, createdAt: new Date().toISOString() });
