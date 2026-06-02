@@ -898,7 +898,6 @@ async function renderStats() {
           <tbody>${d.visual.map((v,i) => `<tr><td>${i+1}</td><td style="cursor:pointer;color:var(--blue)" onclick="searchAndGo('${esc(v.name)}')">${esc(v.name)}</td><td>${v.total}</td><td class="cv">${v.pao}</td><td><span class="rate-badge ${parseInt(v.rate)>=60?'rate-high':parseInt(v.rate)>=30?'rate-mid':'rate-low'}">${v.rate}%</span></td></tr>`).join('')}</tbody>
         </table></div>
       </div>` : ''}
-    : ''}
   `;
 
     Object.values(charts).forEach(c => { try { c.destroy(); } catch(e) {} });
