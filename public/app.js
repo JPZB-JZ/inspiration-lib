@@ -551,24 +551,66 @@ async function renderStats() {
 // AI 分析
 // ================================================================
 
-async function renderAI() {
-  const body = document.getElementById('aiBody');
-  await refreshData();
-  if (!DATA.length) {
-    body.innerHTML = '<div class="empty"><div class="ei">🤖</div><p>还没有数据</p><p class="hint">录入灵感并添加复刻记录后，AI 会自动分析经验</p></div>';
-    return;
-  }
-
-  body.innerHTML = '<div class="empty" style="padding:40px"><p>⏳ AI 正在分析数据，请稍候…</p></div>';
-
+function startAIAnalysis() {
+  var el = document.getElementById('aiResult');
+  if (!el) return;
+  el.innerHTML = '<div class="empty" style="padding:40px"><p>⏳ AI 正在分析数据，请稍候…</p></div>';
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   fetch('/inspiration/api/ai/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) })
-  .then(r => r.json().then(j => ({ ok: r.ok, data: j })))
-  .then(({ ok, data }) => { if (!ok) throw new Error(data.error || '失败'); renderAIResult(data.reply); })
-  .catch(err => {
-    console.warn('AI API 不可用:', err.message);
+  .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, data: j }; }); })
+  .then(function(result) {
+    if (!result.ok) throw new Error(result.data.error || '失败');
+    renderAIResult(result.data.reply);
+  })
+  .catch(function(err) {
+    console.warn('AI API error:', err.message);
     renderLocalAI();
   });
 }
+
+function renderAIResult(reply) {
+  var body = document.getElementById('aiResult');
+  var total = DATA.length;
+  var allRep = DATA.flatMap(function(d) { return (d.replications||[]).map(function(r) { return {inspName:d.name, visual:d.visual, psych:d.psychology, effect:r.effect}; }); });
+  var repCount = allRep.length;
+  var paoMianReps = allRep.filter(function(r) { return r.effect === '跑量'; });
+  var paoMianInsp = DATA.filter(function(d) { return (d.replications||[]).some(function(r) { return r.effect === '跑量'; }); }).length;
+  var formatted = reply.replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^(\d+\.\s)/gm,'<br>$1');
+
+  body.innerHTML = '<div class="exec-card" style="background:linear-gradient(135deg,#007AFF,#5856D6)">'
+    + '<div class="el">U0001f916 DeepSeek AI 深度分析</div>'
+    + '<div class="ev" style="font-size:.88rem;font-weight:500">' + formatted + '</div>'
+    + '</div>'
+    + '<div class="metrics">'
+    + '<div class="metric"><div class="mv">' + total + '</div><div class="ml">总灵感</div></div>'
+    + '<div class="metric g"><div class="mv">' + repCount + '</div><div class="ml">复刻次数</div></div>'
+    + '<div class="metric o"><div class="mv">' + paoMianReps.length + '</div><div class="ml">跑量次数</div></div>'
+    + '<div class="metric"><div class="mv">' + paoMianInsp + '</div><div class="ml">跑通灵感</div></div>'
+    + '</div>';
+}
+
+function renderLocalAI() {
+  var body = document.getElementById('aiResult');
+  var total = DATA.length;
+  var allRep = DATA.flatMap(function(d) { return (d.replications||[]).map(function(r) { return {inspName:d.name, visual:d.visual, psych:d.psychology, effect:r.effect}; }); });
+  var repCount = allRep.length;
+  var paoMianReps = allRep.filter(function(r) { return r.effect === '跑量'; });
+  var noEffReps = allRep.filter(function(r) { return r.effect === '无效果'; });
+  var paoMianInsp = DATA.filter(function(d) { return (d.replications||[]).some(function(r) { return r.effect === '跑量'; }); }).length;
+
+  var lines = [];
+  if (paoMianReps.length > 0) {
+    lines.push('共复刻 ' + repCount + ' 次，其中跑量 ' + paoMianReps.length + ' 次（' + (paoMianReps.length/repCount*100).toFixed(0) + '%），无效果 ' + noEffReps.length + ' 次。');
+  }
+  if (lines.length===0) lines.push('当前数据量不足以生成有效分析，请继续积累复刻记录。');
+
+  body.innerHTML = ''
+    + '<div class="exec-card" style="background:linear-gradient(135deg,#FF9500,#FF3B30)">'
+    + '<div class="el">U0001f4ca 本地规则分析（AI 未连接）</div>'
+    + '<div class="ev" style="font-size:.88rem">' + lines.map(function(t) { return '• ' + t; }).join('<br>') + '<br><br><span style="font-size:.75rem;opacity:.7">提示：配置 DEEPSEEK_API_KEY 后可获得 AI 深度分析</span></div>'
+    + '</div>';
+}
+
 
 function renderAIResult(reply) {
   const body = document.getElementById('aiBody');
@@ -659,10 +701,61 @@ async function loadSample() {
 // 初始化
 // ================================================================
 
+
+
+//
+// 首次使用引导
+//
+
+function showGuide() {
+  if (localStorage.getItem('inspiration_guide_done')) return;
+  localStorage.setItem('inspiration_guide_done', '1');
+
+  var steps = [
+    { ic: String.fromCodePoint(0x1f50d), title: '采集灵感', desc: '在「录入」页面粘贴竞品/同行的视频链接，标注视觉锤、文案钩子、客户心理标签，给投手团队沉淀可复制的创意素材。' },
+    { ic: String.fromCodePoint(0x1f4da), title: '管理灵感库', desc: '在「灵感库」浏览所有采集的素材，添加复刻记录（投放链接、消耗、跑量效果）。好灵感直接拿去拍，拍完回来记结果。' },
+    { ic: String.fromCodePoint(0x1f4ca), title: '看板分析', desc: '「看板」自动统计视觉锤成功率、心理标签转化率、最佳组合。一眼看清哪种视觉×哪种话术最容易跑量，指导下一步拍摄方向。' },
+    { ic: String.fromCodePoint(0x1f916), title: 'AI 深度分析', desc: '「AI 分析」调用 DeepSeek 对数据做策略级解读：哪些方向值得重仓、哪些该放弃，像有经验的老投手在带你。' },
+  ];
+
+  var h = '<div class="modal-overlay" onclick="closeGuide()"></div>';
+  h += '<div class="guide-card">';
+  h += '<div class="guide-h"><span class="guide-emoji">\u2728</span> 欢迎使用灵感库</div>';
+  h += '<div class="guide-sub">采集竞品素材 \u2192 复刻验证 \u2192 沉淀经验，三步跑通爆量模式</div>';
+  h += '<div class="guide-steps">';
+  for (var i = 0; i < steps.length; i++) {
+    var s = steps[i];
+    h += '<div class="guide-step">';
+    h += '<div class="guide-step-num">' + (i + 1) + '</div>';
+    h += '<div class="guide-step-body">';
+    h += '<div class="guide-step-h"><span class="guide-step-ic">' + s.ic + '</span> ' + s.title + '</div>';
+    h += '<div class="guide-step-d">' + s.desc + '</div>';
+    h += '</div></div>';
+  }
+  h += '</div>';
+  h += '<div class="guide-act"><button class="btn-m" onclick="closeGuide()">知道了，开始使用 \u2192</button></div>';
+
+  var modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = h;
+  document.body.appendChild(modal);
+  requestAnimationFrame(function() { modal.querySelector('.guide-card').classList.add('show'); });
+}
+
+function closeGuide() {
+  var m = document.querySelector('.modal');
+  if (m) m.remove();
+}
+
+// ================================================================
+// 初始化
+// ================================================================
 document.addEventListener('DOMContentLoaded', () => {
   loadDlOpts();
   document.getElementById('fDate').value = td();
   document.getElementById('rfDate').value = td();
+  // 首次使用引导
+  showGuide();
   // 检查数据
   refreshData().then(data => {
     if (!data.length) toast('欢迎使用灵感库！先去录入灵感或加载示例数据', 'inf');

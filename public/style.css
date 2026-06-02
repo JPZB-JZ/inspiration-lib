@@ -363,3 +363,97 @@ body{font-family:'Noto Sans SC',-apple-system,sans-serif;background:var(--bg);co
   .pg{margin-left:0;flex-wrap:wrap}
   .ff{border-right:none}
 }
+/* ================================================================
+   首次使用引导
+   ================================================================ */
+
+.guide-card {
+  position: relative;
+  background: var(--card);
+  border-radius: var(--r);
+  box-shadow: var(--shl);
+  width: 560px;
+  max-width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  animation: fi .3s ease;
+  padding: 32px 28px 20px;
+}
+
+.guide-h {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.guide-emoji {
+  font-size: 1.6rem;
+}
+
+.guide-sub {
+  font-size: .82rem;
+  color: var(--t4);
+  margin-bottom: 22px;
+  padding-left: 2px;
+}
+
+.guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.guide-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.guide-step-num {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.guide-step-body {
+  flex: 1;
+}
+
+.guide-step-h {
+  font-weight: 700;
+  font-size: .92rem;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.guide-step-ic {
+  font-size: 1rem;
+}
+
+.guide-step-d {
+  font-size: .8rem;
+  color: var(--t3);
+  line-height: 1.5;
+}
+
+.guide-act {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+  border-top: 1px solid var(--sep-l);
+}

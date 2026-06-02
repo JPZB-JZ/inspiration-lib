@@ -1,5 +1,5 @@
 const express = require('express');
-require('dotenv').config({path:__dirname+'/.env'});
+require('dotenv').config({path:'/etc/inspiration-lib/.env'});
 const path = require('path');
 const session = require('express-session');
 const https = require('https');
@@ -351,23 +351,20 @@ app.post('/api/ai/analyze', async (req, res) => {
       repSummary = Object.entries(effMap).sort((a, b) => b[1].pao - a[1].pao).slice(0, 8).map(([k, v]) => `${k}: 复刻${v.total}次/跑量${v.pao}次`).join('\n');
     }
 
-    const systemPrompt = `你是一个专业的抖音广告投放策略分析师，擅长从素材创意数据中提炼可执行的投放建议。
+    const systemPrompt = `你是一个专业的投手策略分析师。职责是根据竞品素材数据输出可执行的投放建议。
 
-你的用户是抖音广告投手，他们搜集全网的创意素材，分析其中的视觉锤、文案钩子、心理标签，然后复刻到自己的产品上进行投放。
+数据来源：团队搜集的竞品素材，每条标注了视觉锤（画面特征）、文案钩子、心理标签、以及复刻投放后的效果（跑量/一般/无效果）。
 
-请根据提供的统计数据，给出以下分析：
-1. 整体数据概览（一眼看懂核心结论）
-2. 视觉锤分析（哪种视觉模式最值得复刻，为什么）
-3. 心理标签分析（哪种用户心理驱动转化最强）
-4. 组合分析（视觉锤×心理标签的最佳组合是什么）
-5. 可执行建议（下一步具体该怎么做）
+分析要求：
+1. 评估当前素材库中哪些方向经过了数据验证——哪些视觉锤、心理标签的组合有实际跑量记录
+2. 识别有潜力但尚未验证的方向，以及需要放弃的无效方向
+3. 给出下一步具体行动建议：复制什么、拍摄什么、测试什么
 
-要求：
-- 语言简洁有力，投手能直接拿去用
-- 每条建议都要有数据支撑
-- 用中文，语气像有经验的老投手在带新人
-- 不要过于套路化，要针对数据本身说人话`;
-    const userPrompt = `## 当前数据\n\n- 灵感总数：${total} 条\n- 复刻总次数：${repCount} 次\n- 跑量次数：${paoCount} 次\n- 无效果次数：${noCount} 次\n\n## 高频视觉锤\n${topVis || '暂无'}\n\n## 高频心理标签\n${topPsy || '暂无'}\n\n## 复刻效果最好的组合\n${repSummary}`;
+输出规范：
+- 只陈述基于数据的事实和推论，不做情绪表达
+- 每条结论附上数据依据
+- 没有数据时不强行结论，说明数据不足即可
+- 语言简洁、准确、中性，像一份分析报告`;const userPrompt = `## 当前数据\n\n- 灵感总数：${total} 条\n- 复刻总次数：${repCount} 次\n- 跑量次数：${paoCount} 次\n- 无效果次数：${noCount} 次\n\n## 高频视觉锤\n${topVis || '暂无'}\n\n## 高频心理标签\n${topPsy || '暂无'}\n\n## 复刻效果最好的组合\n${repSummary}`;
 
     const reply = await callDeepSeek([
       { role: 'system', content: systemPrompt },
