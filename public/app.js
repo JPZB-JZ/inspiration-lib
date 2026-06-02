@@ -36,17 +36,28 @@ function searchAndGo(query) {
 }
 function toggleTheme() {
   var html = document.documentElement;
-  var isDark = html.getAttribute(data-theme) === dark;
+  var isDark = html.getAttribute('data-theme') === 'dark';
   if (isDark) {
-    html.removeAttribute(data-theme);
-    localStorage.setItem(theme, light);
-    document.getElementById(themeIcon).textContent = uD83CuDF19;
-    document.getElementById(themeLabel).textContent = u6697u8272u4E3Bu9898;
+    html.removeAttribute('data-theme');
+    localStorage.setItem('theme', 'light');
+    document.getElementById('themeIcon').textContent = '🌙';
+    document.getElementById('themeLabel').textContent = '暗色主题';
   } else {
-    html.setAttribute(data-theme, dark);
-    localStorage.setItem(theme, dark);
-    document.getElementById(themeIcon).textContent = u2600uFE0F;
-    document.getElementById(themeLabel).textContent = u4EAEu8272u4E3Bu9898;
+    html.setAttribute('data-theme', 'dark');
+    localStorage.setItem('theme', 'dark');
+    document.getElementById('themeIcon').textContent = '☀️';
+    document.getElementById('themeLabel').textContent = '亮色主题';
+  }
+}
+
+function initTheme() {
+  var saved = localStorage.getItem('theme');
+  if (saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    var icon = document.getElementById('themeIcon');
+    var label = document.getElementById('themeLabel');
+    if (icon) icon.textContent = '☀️';
+    if (label) label.textContent = '亮色主题';
   }
 }
 
