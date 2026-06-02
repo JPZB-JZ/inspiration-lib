@@ -601,27 +601,16 @@ async function delReplication(inspId, replId) {
 function loadLibData() {
   if (!DATA) return [];
   let data = [...DATA];
-  // 批处理条
-  var batchBar = document.getElementById('batchBar');
-  if (!batchBar) {
-    batchBar = document.createElement('div');
+  // 批处理条 - 首次创建
+  if (!document.getElementById('batchBar')) {
+    var batchBar = document.createElement('div');
     batchBar.id = 'batchBar';
     batchBar.style.cssText = 'display:none;align-items:center;gap:8px;padding:10px 14px;background:var(--blue-bg);border-radius:10px;margin-bottom:10px';
     document.getElementById('libList').parentNode.insertBefore(batchBar, document.getElementById('libList'));
   }
-  var selCount = Object.keys(selectedIds).length;
-  if (selCount > 0) {
-    batchBar.style.display = 'flex';
-    batchBar.innerHTML = '<span style="font-weight:600;font-size:.82rem;color:var(--blue)">已选 ' + selCount + ' 条</span>' +
-      '<button class="btn-sm" onclick="batchSetStatus(\'已验证\')" style="padding:4px 12px;font-size:.72rem">✅ 已验证</button>' +
-      '<button class="btn-sm" onclick="batchSetStatus(\'淘汰\')" style="padding:4px 12px;font-size:.72rem;background:var(--t4)">🗑️ 淘汰</button>' +
-      '<button class="btn-sm" onclick="batchSetStatus(\'待复刻\')" style="padding:4px 12px;font-size:.72rem;background:var(--orange)">📋 待复刻</button>' +
-      '<button onclick="batchDelete()" style="margin-left:auto;padding:4px 10px;border:none;border-radius:6px;background:var(--red-bg);color:var(--red);font-family:inherit;font-weight:600;font-size:.72rem;cursor:pointer">✕ 删除</button>' +
-      '<button onclick="selectedIds={};renderLib()" style="padding:4px 8px;border:none;border-radius:6px;background:transparent;color:var(--t4);font-family:inherit;font-size:.72rem;cursor:pointer">取消</button>';
-  } else {
-    batchBar.style.display = 'none';
-  }
+  updateBatchBar();
 
+  // Reset all checkbox states on re-render
   const search = document.getElementById('sS')?.value?.trim().toLowerCase();
   const brand = document.getElementById('sB')?.value?.trim().toLowerCase();
   if (search) {
@@ -746,7 +735,24 @@ function toggleSelect(id) {
   if (selectedIds[id]) delete selectedIds[id];
   else selectedIds[id] = true;
   selectAllMode = false;
-  renderLib();
+  updateBatchBar();
+}
+
+function updateBatchBar() {
+  var batchBar = document.getElementById('batchBar');
+  if (!batchBar) return;
+  var selCount = Object.keys(selectedIds).length;
+  if (selCount > 0) {
+    batchBar.style.display = 'flex';
+    batchBar.innerHTML = '<span style="font-weight:600;font-size:.82rem;color:var(--blue)">已选 ' + selCount + ' 条</span>' +
+      '<button class="btn-sm" onclick="batchSetStatus(\'已验证\')" style="padding:4px 12px;font-size:.72rem">✅ 已验证</button>' +
+      '<button class="btn-sm" onclick="batchSetStatus(\'淘汰\')" style="padding:4px 12px;font-size:.72rem;background:var(--t4)">🗑️ 淘汰</button>' +
+      '<button class="btn-sm" onclick="batchSetStatus(\'待复刻\')" style="padding:4px 12px;font-size:.72rem;background:var(--orange)">📋 待复刻</button>' +
+      '<button onclick="batchDelete()" style="margin-left:auto;padding:4px 10px;border:none;border-radius:6px;background:var(--red-bg);color:var(--red);font-family:inherit;font-weight:600;font-size:.72rem;cursor:pointer">✕ 删除</button>' +
+      '<button onclick="selectedIds={};updateBatchBar();document.querySelectorAll(\'.mc-cb\').forEach(function(cb){cb.checked=false})" style="padding:4px 8px;border:none;border-radius:6px;background:transparent;color:var(--t4);font-family:inherit;font-size:.72rem;cursor:pointer">取消</button>';
+  } else {
+    batchBar.style.display = 'none';
+  }
 }
 
 function toggleSelectAll() {
@@ -758,7 +764,11 @@ function toggleSelectAll() {
   } else {
     selectedIds = {};
   }
-  renderLib();
+  updateBatchBar();
+  // Update all checkboxes visual state
+  document.querySelectorAll('.mc-cb').forEach(function(cb) {
+    cb.checked = !!selectedIds[cb.dataset.id];
+  });
 }
 
 async function batchSetStatus(status) {
