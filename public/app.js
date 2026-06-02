@@ -84,6 +84,7 @@ let charts = {};
 let replInspId = null;
 let rfEff = '跑量';
 let curPage = 1;
+let statsView = 'analysis';
 const PAGE_SIZE = 20;
 
 // ============ 下拉建议管理 ============
@@ -219,7 +220,6 @@ async function go(tab) {
   if (window.innerWidth <= 860) { var sb = document.querySelector('.sb'); if (sb) sb.classList.remove('open'); }
   if (tab === 'lib') await renderLib();
   if (tab === 'stats') await renderStats();
-  if (tab === 'repl') await renderRepDashboard();
   if (tab === 'ai') await renderAI();
 }
 
@@ -891,19 +891,148 @@ async function doExport() {
   body.appendChild(sep);
 }
 
+
+// 复刻追踪筛选状态
+
+// ================================================================
+// 看板视图切换
+// ================================================================
+
+function switchStatsView(view) {
+  statsView = view;
+  document.querySelectorAll('.st-toggle').forEach(function(b) {
+    b.style.background = 'transparent';
+    b.style.color = 'var(--t3)';
+    b.style.fontWeight = '600';
+    b.style.boxShadow = 'none';
+    if (b.dataset.v === view) {
+      b.style.background = 'var(--card)';
+      b.style.color = 'var(--t)';
+      b.style.fontWeight = '700';
+      b.style.boxShadow = '0 1px 3px rgba(0,0,0,.08)';
+    }
+  });
+  renderStats();
+}
+
 // ================================================================
 // 复刻看板
 // ================================================================
 
 let rpEff = 'all';
 
-function setRpEff(btn, val) {
-  rpEff = val;
-  document.querySelectorAll('.rp-fp').forEach(function(b) {
-    b.className = 'rp-fp';
+async function renderRepDashboard() {
+  const container = document.getElementById('statsBody');
+  if (!container) return;
+  container.innerHTML = '<div id="rpFilterBar" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+    '<input type="text" class="ios-in" id="rpSearch" placeholder="🔍 搜索来源灵感 / 视觉锤 / 文案…" style="flex:1;min-width:140px">' +
+    '<button class="rp-fp on" data-e="all" onclick="rpEff=\'all\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--blue);color:#fff;cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">全部</button>' +
+    '<button class="rp-fp" data-e="\u8dd1\u91cf" onclick="rpEff=\'\u8dd1\u91cf\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">\u2705 \u8dd1\u91cf</button>' +
+    '<button class="rp-fp" data-e="\u4e00\u822c" onclick="rpEff=\'\u4e00\u822c\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">\ud83d\udc4c \u4e00\u822c</button>' +
+    '<button class="rp-fp" data-e="\u65e0\u6548\u679c" onclick="rpEff=\'\u65e0\u6548\u679c\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">\u274c \u65e0\u6548\u679c</button>' +
+    '<span id="rpCount" style="font-size:.78rem;color:var(--t4)"></span>' +
+    '</div><div class="empty" style="padding:30px"><p>\u23f3 \u52a0\u8f7d\u4e2d\u2026</p></div>';
+
+  var searchInput = document.getElementById('rpSearch');
+  if (searchInput) searchInput.oninput = function() { renderRepDashboard(); };
+
+  try {
+    var searchStr = (document.getElementById('rpSearch')?.value || '').trim();
+    var url = '/inspiration/api/replications/dashboard?';
+    if (searchStr) url += 'search=' + encodeURIComponent(searchStr) + '&';
+    if (rpEff && rpEff !== 'all') url += 'effect=' + encodeURIComponent(rpEff) + '&';
+
+    var res = await fetch(url);
+    if (!res.ok) throw new Error('\u52a0\u8f7d\u5931\u8d25');
+    var data = await res.json();
+
+    if (!data.length) {
+      container.innerHTML = document.getElementById('rpFilterBar')?.outerHTML + '<div class="empty"><div class="ei">\ud83d\udd04</div><p>\u6ca1\u6709\u590d\u523b\u8bb0\u5f55</p><p class="hint">\u6dfb\u52a0\u590d\u523b\u8bb0\u5f55\u540e\uff0c\u8fd9\u91cc\u4f1a\u8ffd\u8e2a\u6bcf\u6761\u590d\u523b\u7684\u6765\u6e90\u548c\u6548\u679c</p></div>';
+      var inp2 = document.getElementById('rpSearch');
+      if (inp2) inp2.oninput = function() { renderRepDashboard(); };
+      return;
+    }
+
+    document.getElementById('rpCount').textContent = '\u5171 ' + data.length + ' \u6761';
+
+    var totalSpend = 0;
+    var effCount = {};
+    data.forEach(function(r) {
+      totalSpend += r.spend;
+      effCount[r.effect] = (effCount[r.effect] || 0) + 1;
+    });
+    var paoCount = effCount['\u8dd1\u91cf'] || 0;
+    var paoRate = data.length > 0 ? (paoCount / data.length * 100).toFixed(0) : 0;
+
+    var html = '<div class="metrics">' +
+      '<div class="metric"><div class="mv">' + data.length + '</div><div class="ml">\u590d\u523b\u603b\u6b21\u6570</div></div>' +
+      '<div class="metric g"><div class="mv">' + paoCount + '</div><div class="ml">\u8dd1\u91cf\u6b21\u6570</div></div>' +
+      '<div class="metric o"><div class="mv">' + paoRate + '%</div><div class="ml">\u8dd1\u91cf\u7387</div></div>' +
+      '<div class="metric"><div class="mv">\u00a5' + totalSpend.toLocaleString() + '</div><div class="ml">\u603b\u6d88\u8017</div></div>' +
+      '</div>';
+
+    var effSummary = '';
+    Object.keys(effCount).sort().forEach(function(k) {
+      var emoji = {'\u8dd1\u91cf':'\u2705','\u4e00\u822c':'\ud83d\udc4c','\u65e0\u6548\u679c':'\u274c'};
+      effSummary += '<span style="margin:0 8px;font-size:.82rem;color:var(--t3)">' + (emoji[k]||'') + ' ' + k + ': ' + effCount[k] + '</span>';
+    });
+    html += '<div style="text-align:center;padding:0 0 12px;font-size:.78rem;color:var(--t4)">' + effSummary + '</div>';
+
+    html += '<div class="card"><div class="card-h">\ud83d\udd04 \u590d\u523b\u8ffd\u8e2a\u6e05\u5355</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr>' +
+      '<th>\u65e5\u671f</th><th>\u6765\u6e90\u7075\u611f</th><th>\u590d\u523b\u94fe\u63a5</th><th>\u89c6\u89c9\u9524</th><th>\u6587\u6848\u94a9\u5b50</th><th>\u5fc3\u7406\u6807\u7b7e</th>' +
+      '<th>\u6d88\u8017</th><th>\u5c55\u793a</th><th>\u6548\u679c</th><th>\u7b14\u8bb0</th></tr></thead><tbody>';
+
+    data.forEach(function(r) {
+      var effEmoji = {'\u8dd1\u91cf':'\u2705','\u4e00\u822c':'\ud83d\udc4c','\u65e0\u6548\u679c':'\u274c'};
+      var effColor = {'\u8dd1\u91cf':'var(--green)','\u4e00\u822c':'var(--orange)','\u65e0\u6548\u679c':'var(--red)'};
+      html += '<tr>' +
+        '<td style="white-space:nowrap;color:var(--t4);font-size:.72rem">' + (r.date || '-') + '</td>' +
+        '<td><strong>' + esc(r.inspName) + '</strong>' +
+          (r.inspBrand ? '<br><span style="color:var(--t4);font-size:.68rem">' + esc(r.inspBrand) + (r.inspCategory ? ' \u00b7 ' + esc(r.inspCategory) : '') + '</span>' : '') +
+        '</td>' +
+        '<td>' + (r.link ? '<a href="' + esc(r.link) + '" target="_blank" style="font-size:.75rem">\ud83d\udd17 \u67e5\u770b</a>' : '-') + '</td>' +
+        '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspVisual) + '">' + esc(r.inspVisual || '-') + '</td>' +
+        '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspHook) + '">' + esc(r.inspHook || '-') + '</td>' +
+        '<td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspPsychology) + '">' + esc(r.inspPsychology || '-') + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">\u00a5' + (r.spend || 0).toLocaleString() + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">' + (r.impressions || 0).toLocaleString() + '</td>' +
+        '<td><span style="color:' + effColor[r.effect] + ';font-weight:600;font-size:.78rem">' + (effEmoji[r.effect]||'') + ' ' + esc(r.effect) + '</span></td>' +
+        '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t4);font-size:.75rem" title="' + esc(r.notes) + '">' + esc(r.notes||'-') + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div></div>' +
+      '<div style="text-align:center;padding:10px 0"><button class="btn-g" onclick="switchStatsView(\'analysis\')" style="padding:8px 20px">\u2190 \u8fd4\u56de\u6570\u636e\u5206\u6790</button></div>';
+
+    container.innerHTML = html;
+    var inp3 = document.getElementById('rpSearch');
+    if (inp3) inp3.oninput = function() { renderRepDashboard(); };
+
+    // \u6570\u503c\u52a8\u753b
+    var mvs = container.querySelectorAll('.metric .mv');
+    mvs.forEach(function(el) {
+      var raw = el.textContent.replace(/[^0-9.]/g, '');
+      var isMoney = el.textContent.includes('\u00a5');
+      var val = parseFloat(raw) || 0;
+      if (val > 0) {
+        var obj = { v: 0 };
+        gsap.to(obj, { v: val, duration: 0.6, ease: 'power2.out', onUpdate: function() {
+          if (isMoney) el.textContent = '\u00a5' + Math.round(obj.v).toLocaleString();
+          else el.textContent = val >= 1 ? Math.round(obj.v) : obj.v.toFixed(1);
+        }});
+      }
+    });
+
+  } catch (err) {
+    container.innerHTML = '<div class="empty"><p>\u274c \u52a0\u8f7d\u5931\u8d25: ' + err.message + '</p></div>';
+  }
+}
+
+function rerenderRp() {
+  var btns = document.querySelectorAll('.rp-fp');
+  btns.forEach(function(b) {
     b.style.background = 'var(--bg)';
     b.style.color = 'var(--t3)';
-    if (b.dataset.e === val) {
+    if (b.dataset.e === rpEff) {
       b.style.background = 'var(--blue)';
       b.style.color = '#fff';
     }
@@ -911,108 +1040,11 @@ function setRpEff(btn, val) {
   renderRepDashboard();
 }
 
-function onRpSearch() {
-  renderRepDashboard();
-}
-
-async function renderRepDashboard() {
-  const container = document.getElementById('replDashboard');
-  if (!container) return;
-  container.innerHTML = '<div class="empty" style="padding:30px"><p>⏳ 加载中…</p></div>';
-
-  try {
-    const search = document.getElementById('rpSearch')?.value?.trim() || '';
-    let url = '/inspiration/api/replications/dashboard?';
-    if (search) url += 'search=' + encodeURIComponent(search) + '&';
-    if (rpEff && rpEff !== 'all') url += 'effect=' + encodeURIComponent(rpEff) + '&';
-
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('加载失败');
-    const data = await res.json();
-
-    if (!data.length) {
-      container.innerHTML = '<div class="empty"><div class="ei">🔄</div><p>没有复刻记录</p><p class="hint">添加复刻记录后，这里会追踪每条复刻的来源和效果</p></div>';
-      return;
-    }
-
-    document.getElementById('rpCount').textContent = '共 ' + data.length + ' 条';
-
-    // 汇总统计
-    const totalSpend = data.reduce(function(s, r) { return s + r.spend; }, 0);
-    const totalImp = data.reduce(function(s, r) { return s + r.impressions; }, 0);
-    const effCount = {};
-    data.forEach(function(r) { effCount[r.effect] = (effCount[r.effect] || 0) + 1; });
-    const paoCount = effCount['跑量'] || 0;
-    const paoRate = data.length > 0 ? (paoCount / data.length * 100).toFixed(0) : 0;
-
-    var html = '<div class="metrics">';
-    html += '<div class="metric"><div class="mv">' + data.length + '</div><div class="ml">复刻总次数</div></div>';
-    html += '<div class="metric g"><div class="mv">' + paoCount + '</div><div class="ml">跑量次数</div></div>';
-    html += '<div class="metric o"><div class="mv">' + paoRate + '%</div><div class="ml">跑量率</div></div>';
-    html += '<div class="metric"><div class="mv">¥' + totalSpend.toLocaleString() + '</div><div class="ml">总消耗</div></div>';
-    html += '</div>';
-
-    // 跑量 / 一般 / 无效果 分布摘要
-    var effSummary = '';
-    Object.keys(effCount).sort().forEach(function(k) {
-      var emoji = {'跑量':'✅','一般':'👌','无效果':'❌'};
-      effSummary += '<span style="margin:0 8px;font-size:.82rem;color:var(--t3)">' + (emoji[k]||'') + ' ' + k + ': ' + effCount[k] + '</span>';
-    });
-    html += '<div style="text-align:center;padding:0 0 12px;font-size:.78rem;color:var(--t4)">' + effSummary + '</div>';
-
-    // 表格
-    html += '<div class="card"><div class="card-h">🔄 复刻追踪清单</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr>' +
-      '<th>日期</th><th>来源灵感</th><th>复刻链接</th><th>视觉锤</th><th>文案钩子</th><th>心理标签</th>' +
-      '<th>消耗</th><th>展示</th><th>效果</th><th>笔记</th></tr></thead><tbody>';
-
-    data.forEach(function(r) {
-      var effEmoji = {'跑量':'✅','一般':'👌','无效果':'❌'};
-      var effColor = {'跑量':'var(--green)','一般':'var(--orange)','无效果':'var(--red)'};
-
-      html += '<tr>' +
-        '<td style="white-space:nowrap;font-size:.72rem;color:var(--t4)">' + (r.date || '-') + '</td>' +
-        '<td><strong>' + esc(r.inspName) + '</strong>' +
-          (r.inspBrand ? '<br><span style="font-size:.68rem;color:var(--t4)">' + esc(r.inspBrand) + (r.inspCategory ? ' · ' + esc(r.inspCategory) : '') + '</span>' : '') +
-        '</td>' +
-        '<td>' + (r.link ? '<a href="' + esc(r.link) + '" target="_blank" style="font-size:.75rem">🔗 查看</a>' : '-') + '</td>' +
-        '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspVisual) + '">' + esc(r.inspVisual || '-') + '</td>' +
-        '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspHook) + '">' + esc(r.inspHook || '-') + '</td>' +
-        '<td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspPsychology) + '">' + esc(r.inspPsychology || '-') + '</td>' +
-        '<td style="text-align:right;white-space:nowrap">¥' + (r.spend || 0).toLocaleString() + '</td>' +
-        '<td style="text-align:right;white-space:nowrap">' + (r.impressions || 0).toLocaleString() + '</td>' +
-        '<td><span style="color:' + effColor[r.effect] + ';font-weight:600;font-size:.78rem">' + (effEmoji[r.effect]||'') + ' ' + esc(r.effect) + '</span></td>' +
-        '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.75rem;color:var(--t4)" title="' + esc(r.notes) + '">' + esc(r.notes||'-') + '</td>' +
-        '</tr>';
-    });
-
-    html += '</tbody></table></div></div>';
-    container.innerHTML = html;
-
-    // 数值动画
-    var mvs = container.querySelectorAll('.metric .mv');
-    mvs.forEach(function(el) {
-      var raw = el.textContent.replace(/[^0-9.]/g, '');
-      var isMoney = el.textContent.includes('¥');
-      var val = parseFloat(raw) || 0;
-      if (val > 0) {
-        var obj = { v: 0 };
-        gsap.to(obj, { v: val, duration: 0.6, ease: 'power2.out', onUpdate: function() {
-          if (isMoney) el.textContent = '¥' + Math.round(obj.v).toLocaleString();
-          else el.textContent = val >= 1 ? Math.round(obj.v) : obj.v.toFixed(1);
-        }});
-      }
-    });
-
-  } catch (err) {
-    container.innerHTML = '<div class="empty"><p>❌ 加载失败: ' + err.message + '</p></div>';
-  }
-}
-
-// ================================================================
-// 统计看板
-// ================================================================
-
 async function renderStats() {
+  if (statsView === 'replication') {
+    await renderRepDashboard();
+    return;
+  }
   const body = document.getElementById('statsBody');
   body.innerHTML = '<div class="empty" style="padding:30px"><p>⏳ 加载中…</p></div>';
 
