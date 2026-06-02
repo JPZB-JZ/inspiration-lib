@@ -24,6 +24,7 @@
       <button class="sbn on" data-t="entry" onclick="go('entry')"><span class="sbn-ic">＋</span> 录入</button>
       <button class="sbn" data-t="lib" onclick="go('lib')"><span class="sbn-ic">📚</span> 灵感库</button>
       <button class="sbn" data-t="stats" onclick="go('stats')"><span class="sbn-ic">📊</span> 看板</button>
+      <button class="sbn" data-t="repl" onclick="go('repl')"><span class="sbn-ic">🔄</span> 复刻看板</button>
     </nav>
     
     <div style="padding:10px 14px;border-top:1px solid var(--sep-l)">
@@ -46,6 +47,7 @@
     <button class="bnb on" data-t="entry" onclick="go('entry')"><span class="bnb-ic">＋</span><span class="bnb-lb">录入</span></button>
     <button class="bnb" data-t="lib" onclick="go('lib')"><span class="bnb-ic">📚</span><span class="bnb-lb">灵感库</span></button>
     <button class="bnb" data-t="stats" onclick="go('stats')"><span class="bnb-ic">📊</span><span class="bnb-lb">看板</span></button>
+    <button class="bnb" data-t="repl" onclick="go('repl')"><span class="bnb-ic">🔄</span><span class="bnb-lb">复刻</span></button>
   </nav>
 
   <!-- ==================== 主内容 ==================== -->
@@ -156,6 +158,20 @@
       </div>
     </section>
 
+    <!-- ====== 复刻看板 ====== -->
+    <section id="t-repl" class="tab">
+      <div class="fl-bar">
+        <input type="text" class="ios-in" id="rpSearch" placeholder="🔍 搜索来源灵感 / 视觉锤 / 文案…" oninput="onRpSearch()" style="flex:1;min-width:140px">
+        <div class="rp-pills" style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="rp-fp on" data-e="all" onclick="setRpEff(this,'all')" style="padding:6px 12px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">全部</button>
+          <button class="rp-fp" data-e="跑量" onclick="setRpEff(this,'跑量')" style="padding:6px 12px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">✅ 跑量</button>
+          <button class="rp-fp" data-e="一般" onclick="setRpEff(this,'一般')" style="padding:6px 12px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">👌 一般</button>
+          <button class="rp-fp" data-e="无效果" onclick="setRpEff(this,'无效果')" style="padding:6px 12px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">❌ 无效果</button>
+        </div>
+        <span class="lib-count" id="rpCount"></span>
+      </div>
+      <div id="replDashboard"></div>
+    </section>
     <!-- ====== 看板 ====== -->
     <section id="t-stats" class="tab">
       <div id="statsBody"></div>

@@ -219,6 +219,7 @@ async function go(tab) {
   if (window.innerWidth <= 860) { var sb = document.querySelector('.sb'); if (sb) sb.classList.remove('open'); }
   if (tab === 'lib') await renderLib();
   if (tab === 'stats') await renderStats();
+  if (tab === 'repl') await renderRepDashboard();
   if (tab === 'ai') await renderAI();
 }
 
@@ -888,6 +889,123 @@ async function doExport() {
     + '<div style="font-size:.82rem;color:var(--t4);margin-bottom:16px">让 AI 根据当前数据分析策略方向</div>'
     + '<button class="btn-m" style="font-size:1rem;padding:14px 36px" onclick="startAIAnalysis()">U0001f916 AI 深度解析</button></div>';
   body.appendChild(sep);
+}
+
+// ================================================================
+// 复刻看板
+// ================================================================
+
+let rpEff = 'all';
+
+function setRpEff(btn, val) {
+  rpEff = val;
+  document.querySelectorAll('.rp-fp').forEach(function(b) {
+    b.className = 'rp-fp';
+    b.style.background = 'var(--bg)';
+    b.style.color = 'var(--t3)';
+    if (b.dataset.e === val) {
+      b.style.background = 'var(--blue)';
+      b.style.color = '#fff';
+    }
+  });
+  renderRepDashboard();
+}
+
+function onRpSearch() {
+  renderRepDashboard();
+}
+
+async function renderRepDashboard() {
+  const container = document.getElementById('replDashboard');
+  if (!container) return;
+  container.innerHTML = '<div class="empty" style="padding:30px"><p>⏳ 加载中…</p></div>';
+
+  try {
+    const search = document.getElementById('rpSearch')?.value?.trim() || '';
+    let url = '/inspiration/api/replications/dashboard?';
+    if (search) url += 'search=' + encodeURIComponent(search) + '&';
+    if (rpEff && rpEff !== 'all') url += 'effect=' + encodeURIComponent(rpEff) + '&';
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('加载失败');
+    const data = await res.json();
+
+    if (!data.length) {
+      container.innerHTML = '<div class="empty"><div class="ei">🔄</div><p>没有复刻记录</p><p class="hint">添加复刻记录后，这里会追踪每条复刻的来源和效果</p></div>';
+      return;
+    }
+
+    document.getElementById('rpCount').textContent = '共 ' + data.length + ' 条';
+
+    // 汇总统计
+    const totalSpend = data.reduce(function(s, r) { return s + r.spend; }, 0);
+    const totalImp = data.reduce(function(s, r) { return s + r.impressions; }, 0);
+    const effCount = {};
+    data.forEach(function(r) { effCount[r.effect] = (effCount[r.effect] || 0) + 1; });
+    const paoCount = effCount['跑量'] || 0;
+    const paoRate = data.length > 0 ? (paoCount / data.length * 100).toFixed(0) : 0;
+
+    var html = '<div class="metrics">';
+    html += '<div class="metric"><div class="mv">' + data.length + '</div><div class="ml">复刻总次数</div></div>';
+    html += '<div class="metric g"><div class="mv">' + paoCount + '</div><div class="ml">跑量次数</div></div>';
+    html += '<div class="metric o"><div class="mv">' + paoRate + '%</div><div class="ml">跑量率</div></div>';
+    html += '<div class="metric"><div class="mv">¥' + totalSpend.toLocaleString() + '</div><div class="ml">总消耗</div></div>';
+    html += '</div>';
+
+    // 跑量 / 一般 / 无效果 分布摘要
+    var effSummary = '';
+    Object.keys(effCount).sort().forEach(function(k) {
+      var emoji = {'跑量':'✅','一般':'👌','无效果':'❌'};
+      effSummary += '<span style="margin:0 8px;font-size:.82rem;color:var(--t3)">' + (emoji[k]||'') + ' ' + k + ': ' + effCount[k] + '</span>';
+    });
+    html += '<div style="text-align:center;padding:0 0 12px;font-size:.78rem;color:var(--t4)">' + effSummary + '</div>';
+
+    // 表格
+    html += '<div class="card"><div class="card-h">🔄 复刻追踪清单</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr>' +
+      '<th>日期</th><th>来源灵感</th><th>复刻链接</th><th>视觉锤</th><th>文案钩子</th><th>心理标签</th>' +
+      '<th>消耗</th><th>展示</th><th>效果</th><th>笔记</th></tr></thead><tbody>';
+
+    data.forEach(function(r) {
+      var effEmoji = {'跑量':'✅','一般':'👌','无效果':'❌'};
+      var effColor = {'跑量':'var(--green)','一般':'var(--orange)','无效果':'var(--red)'};
+
+      html += '<tr>' +
+        '<td style="white-space:nowrap;font-size:.72rem;color:var(--t4)">' + (r.date || '-') + '</td>' +
+        '<td><strong>' + esc(r.inspName) + '</strong>' +
+          (r.inspBrand ? '<br><span style="font-size:.68rem;color:var(--t4)">' + esc(r.inspBrand) + (r.inspCategory ? ' · ' + esc(r.inspCategory) : '') + '</span>' : '') +
+        '</td>' +
+        '<td>' + (r.link ? '<a href="' + esc(r.link) + '" target="_blank" style="font-size:.75rem">🔗 查看</a>' : '-') + '</td>' +
+        '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspVisual) + '">' + esc(r.inspVisual || '-') + '</td>' +
+        '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspHook) + '">' + esc(r.inspHook || '-') + '</td>' +
+        '<td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r.inspPsychology) + '">' + esc(r.inspPsychology || '-') + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">¥' + (r.spend || 0).toLocaleString() + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">' + (r.impressions || 0).toLocaleString() + '</td>' +
+        '<td><span style="color:' + effColor[r.effect] + ';font-weight:600;font-size:.78rem">' + (effEmoji[r.effect]||'') + ' ' + esc(r.effect) + '</span></td>' +
+        '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.75rem;color:var(--t4)" title="' + esc(r.notes) + '">' + esc(r.notes||'-') + '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table></div></div>';
+    container.innerHTML = html;
+
+    // 数值动画
+    var mvs = container.querySelectorAll('.metric .mv');
+    mvs.forEach(function(el) {
+      var raw = el.textContent.replace(/[^0-9.]/g, '');
+      var isMoney = el.textContent.includes('¥');
+      var val = parseFloat(raw) || 0;
+      if (val > 0) {
+        var obj = { v: 0 };
+        gsap.to(obj, { v: val, duration: 0.6, ease: 'power2.out', onUpdate: function() {
+          if (isMoney) el.textContent = '¥' + Math.round(obj.v).toLocaleString();
+          else el.textContent = val >= 1 ? Math.round(obj.v) : obj.v.toFixed(1);
+        }});
+      }
+    });
+
+  } catch (err) {
+    container.innerHTML = '<div class="empty"><p>❌ 加载失败: ' + err.message + '</p></div>';
+  }
 }
 
 // ================================================================

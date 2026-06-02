@@ -210,6 +210,102 @@ app.delete('/api/replications/:id', async (req, res) => {
 });
 
 // ================================================================
+// 复刻看板 API
+// ================================================================
+
+app.get('/api/replications/dashboard', async (req, res) => {
+  try {
+    const { search, effect, dateFrom, dateTo } = req.query;
+    const [repls] = await pool.query(
+      `SELECT r.id, r.material_id, r.link, r.spend, r.impressions, r.effect, r.notes, r.date, r.created_at,
+              m.name AS insp_name, m.brand AS insp_brand, m.category AS insp_category,
+              m.visual AS insp_visual, m.hook AS insp_hook, m.psychology AS insp_psychology
+       FROM replications r
+       JOIN materials m ON r.material_id = m.id
+       ORDER BY r.created_at DESC`
+    );
+
+    let data = repls.map(r => ({
+      id: r.id, materialId: r.material_id, link: r.link || '',
+      spend: parseFloat(r.spend) || 0, impressions: r.impressions || 0,
+      effect: r.effect || '一般', notes: r.notes || '',
+      date: r.date ? r.date.toISOString().split('T')[0] : '',
+      createdAt: r.created_at ? r.created_at.toISOString() : '',
+      inspName: r.insp_name, inspBrand: r.insp_brand || '',
+      inspCategory: r.insp_category || '', inspVisual: r.insp_visual || '',
+      inspHook: r.insp_hook || '', inspPsychology: r.insp_psychology || '',
+    }));
+
+    // 筛选
+    if (search) {
+      const s = search.toLowerCase();
+      data = data.filter(d =>
+        (d.inspName||'').toLowerCase().includes(s) ||
+        (d.inspVisual||'').toLowerCase().includes(s) ||
+        (d.inspHook||'').toLowerCase().includes(s) ||
+        (d.inspPsychology||'').toLowerCase().includes(s) ||
+        (d.inspBrand||'').toLowerCase().includes(s)
+      );
+    }
+    if (effect && effect !== 'all') data = data.filter(d => d.effect === effect);
+    if (dateFrom) data = data.filter(d => d.date >= dateFrom);
+    if (dateTo) data = data.filter(d => d.date <= dateTo);
+
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: '查询失败: ' + err.message });
+  }
+});
+
+// ================================================================
+// 复刻看板 API
+// ================================================================
+
+app.get('/api/replications/dashboard', async (req, res) => {
+  try {
+    const { search, effect, dateFrom, dateTo } = req.query;
+    const [repls] = await pool.query(
+      `SELECT r.id, r.material_id, r.link, r.spend, r.impressions, r.effect, r.notes, r.date, r.created_at,
+              m.name AS insp_name, m.brand AS insp_brand, m.category AS insp_category,
+              m.visual AS insp_visual, m.hook AS insp_hook, m.psychology AS insp_psychology
+       FROM replications r
+       JOIN materials m ON r.material_id = m.id
+       ORDER BY r.created_at DESC`
+    );
+
+    let data = repls.map(r => ({
+      id: r.id, materialId: r.material_id, link: r.link || '',
+      spend: parseFloat(r.spend) || 0, impressions: r.impressions || 0,
+      effect: r.effect || '一般', notes: r.notes || '',
+      date: r.date ? r.date.toISOString().split('T')[0] : '',
+      createdAt: r.created_at ? r.created_at.toISOString() : '',
+      inspName: r.insp_name, inspBrand: r.insp_brand || '',
+      inspCategory: r.insp_category || '', inspVisual: r.insp_visual || '',
+      inspHook: r.insp_hook || '', inspPsychology: r.insp_psychology || '',
+    }));
+
+    // 筛选
+    if (search) {
+      const s = search.toLowerCase();
+      data = data.filter(d =>
+        (d.inspName||'').toLowerCase().includes(s) ||
+        (d.inspVisual||'').toLowerCase().includes(s) ||
+        (d.inspHook||'').toLowerCase().includes(s) ||
+        (d.inspPsychology||'').toLowerCase().includes(s) ||
+        (d.inspBrand||'').toLowerCase().includes(s)
+      );
+    }
+    if (effect && effect !== 'all') data = data.filter(d => d.effect === effect);
+    if (dateFrom) data = data.filter(d => d.date >= dateFrom);
+    if (dateTo) data = data.filter(d => d.date <= dateTo);
+
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: '查询失败: ' + err.message });
+  }
+});
+
+// ================================================================
 // 示例数据
 // ================================================================
 
