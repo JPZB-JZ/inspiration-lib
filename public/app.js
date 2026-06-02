@@ -654,20 +654,13 @@ async function doExport() {
     body.insertAdjacentHTML('beforeend', brandHtml);
   }
 
-  // AI analysis section
-  var sep = document.createElement('div');
-  sep.style.cssText = 'margin-top:28px;text-align:center';
-  sep.innerHTML = '<div style="border-top:1px solid var(--sep-l);padding-top:24px;margin-bottom:8px">'
-    + '<div style="font-size:.82rem;color:var(--t4);margin-bottom:16px">让 AI 根据当前数据分析策略方向</div>'
-    + '<button class="btn-m" style="font-size:1rem;padding:14px 36px" onclick="startAIAnalysis()">U0001f916 AI 深度解析</button></div>';
-  body.appendChild(sep);
 
   // AI analysis section
   var sep = document.createElement('div');
   sep.style.cssText = 'margin-top:28px;text-align:center';
   sep.innerHTML = '<div style="border-top:1px solid var(--sep-l);padding-top:24px;margin-bottom:8px">'
     + '<div style="font-size:.82rem;color:var(--t4);margin-bottom:16px">让 AI 根据当前数据分析策略方向</div>'
-    + '<button class="btn-m" style="font-size:1rem;padding:14px 36px" onclick="startAIAnalysis()">U0001f916 AI 深度解析</button></div>';
+    + '<button class="btn-m" style="font-size:1rem;padding:14px 36px" onclick="startAIAnalysis()">🤖 AI 深度解析</button></div>';
   body.appendChild(sep);
 }
 
@@ -779,7 +772,7 @@ function renderAIResult(reply) {
   var formatted = reply.replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^(\d+\.\s)/gm,'<br>$1');
 
   body.innerHTML = '<div class="exec-card" style="background:linear-gradient(135deg,#007AFF,#5856D6)">'
-    + '<div class="el">U0001f916 DeepSeek AI 深度分析</div>'
+    + '<div class="el">🤖 DeepSeek AI 深度分析</div>'
     + '<div class="ev" style="font-size:.88rem;font-weight:500">' + formatted + '</div>'
     + '</div>'
     + '<div class="metrics">'
@@ -807,7 +800,7 @@ function renderLocalAI() {
 
   body.innerHTML = ''
     + '<div class="exec-card" style="background:linear-gradient(135deg,#FF9500,#FF3B30)">'
-    + '<div class="el">U0001f4ca 本地规则分析（AI 未连接）</div>'
+    + '<div class="el">📊 本地规则分析（AI 未连接）</div>'
     + '<div class="ev" style="font-size:.88rem">' + lines.map(function(t) { return '• ' + t; }).join('<br>') + '<br><br><span style="font-size:.75rem;opacity:.7">提示：配置 DEEPSEEK_API_KEY 后可获得 AI 深度分析</span></div>'
     + '</div>';
 }
