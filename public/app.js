@@ -490,7 +490,7 @@ async function renderLib() {
 
     return `<div class="mc">
       <div class="mc-top"><div class="mc-n">${esc(d.name)}</div><div class="mc-st ${sc}">${d.status}</div></div>
-      ${d.link ? (function(){var m=d.link.match(/https?:\/\/([^\/]+)/);var dom=m?m[1]:'';return '<div class="mc-link-row"><span class="fav">🔗</span><a href="'+esc(extractUrl(d.link))+'" target="_blank">'+dom+'</a></div>'})() : ''}
+      ${d.link ? (function(){var m=d.link.match(/https?:\/\/([^\/]+)/);var dom=m?m[1]:'';return '<div class="mc-link-row"><span class="fav">🔗</span><a href="'+esc(extractUrl(d.link))+'" target="_blank">点击查看原视频</a></div>'})() : ''}
       <div class="mc-visual">${d.visual ? '<span class="vtag"><span class="vico">🎨</span>'+esc(d.visual)+'</span>' : ''}${d.hook ? '<span class="vtag"><span class="vico">💬</span>'+esc(d.hook)+'</span>' : ''}</div>
       <div class="mc-tg">${d.brand ? '<span class="tg"><span class="tl">品牌</span>'+esc(d.brand)+'</span>' : ''}${d.category ? '<span class="tg"><span class="tl">品类</span>'+esc(d.category)+'</span>' : ''}</div>
       <div class="mc-stats">${repCount > 0 ? '<span class="mc-stat"><span class="sv">'+repCount+'</span>次复刻</span>'+effTags : '<span class="mc-stat">⏳ 尚未复刻</span>'}</div>
@@ -708,9 +708,9 @@ async function renderStats() {
         </table></div>
       </div>` : ''}
       <div class="ch-row three">
-        <div class="card"><div class="card-h">📊 复刻效果分布</div><div class="ch-area" id="chart-eff"></div></div>
-        <div class="card"><div class="card-h">🎨 视觉锤跑量次数 Top6</div><div class="ch-area" id="chart-vis-rank"></div></div>
-        <div class="card"><div class="card-h">🧠 心理标签跑量次数 Top6</div><div class="ch-area" id="chart-psy-rank"></div></div>
+        <div class="card"><div class="card-h">📊 复刻效果分布</div><div class="ch-area"><canvas id="chart-eff"></canvas></div></div>
+        <div class="card"><div class="card-h">🎨 视觉锤跑量次数 Top6</div><div class="ch-area"><canvas id="chart-vis-rank"></canvas></div></div>
+        <div class="card"><div class="card-h">🧠 心理标签跑量次数 Top6</div><div class="ch-area"><canvas id="chart-psy-rank"></canvas></div></div>
       </div>
       ${d.visual && d.visual.length > 0 ? `
       <div class="card">
