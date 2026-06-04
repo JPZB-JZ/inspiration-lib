@@ -165,16 +165,7 @@ function toggleTheme() {
   }
 }
 
-function initTheme() {
-  var saved = localStorage.getItem(theme);
-  if (saved === dark) {
-    document.documentElement.setAttribute(data-theme, dark);
-    var icon = document.getElementById(themeIcon);
-    var label = document.getElementById(themeLabel);
-    if (icon) icon.textContent = u2600uFE0F;
-    if (label) label.textContent = u4EAEu8272u4E3Bu9898;
-  }
-}
+// initTheme removed - broken (all vars undefined)
 
 /* ==============================================================
    灵感库 v3 — 数据存储在 MySQL 服务端，多人实时同步
@@ -427,7 +418,8 @@ async function save() {
     psychology: document.getElementById('fPsych').value.trim(),
     status: sSt,
     date: document.getElementById('fDate').value || td(),
-    note: document.getElementById('fNote').value.trim()
+    note: document.getElementById('fNote').value.trim(),
+    createdBy: ''
   };
 
   try {
@@ -500,7 +492,8 @@ async function saveEditModal() {
         psychology: document.getElementById('emPsych').value.trim(),
         status: emSt,
         date: document.getElementById('emDate').value || '',
-        note: document.getElementById('emNote').value.trim()
+        note: document.getElementById('emNote').value.trim(),
+        createdBy: ''
       })
     });
     closeEditModal();
@@ -901,324 +894,6 @@ async function doExport() {
   toast('Excel 导出成功 ✅', 'ok');
 
 
-  // Trend: monthly replication data
-  var allReps = [];
-  DATA.forEach(function(d) { (d.replications||[]).forEach(function(r) { allReps.push({date:r.date, effect:r.effect, name:d.name, visual:d.visual, brand:d.brand}); }); });
-  allReps.sort(function(a,b) { return (a.date||'').localeCompare(b.date||''); });
-
-  if (allReps.length > 0) {
-    var monthMap = {};
-    allReps.forEach(function(r) {
-      if (!r.date) return;
-      var m = r.date.substring(0,7);
-      if (!monthMap[m]) monthMap[m] = {total:0, pao:0};
-      monthMap[m].total++;
-      if (r.effect === '跑量') monthMap[m].pao++;
-    });
-    var months = Object.keys(monthMap).sort();
-    if (months.length > 0) {
-      var trendHtml = '<div class="card"><div class="card-h">\uD83D\uDCC8 \u8D8B\u52BF\u5206\u6790 <span style="font-weight:400;font-size:.75rem;color:var(--t4);margin-left:8px">\u6309\u6708\u590D\u523B\u8D8B\u52BF</span></div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u6708\u4EFD</th><th>\u590D\u523B\u6B21\u6570</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-      months.forEach(function(m) {
-        var d = monthMap[m];
-        var rate = d.total > 0 ? (d.pao/d.total*100).toFixed(0) : 0;
-        trendHtml += '<tr><td>'+m+'</td><td>'+d.total+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-      });
-      trendHtml += '</tbody></table></div></div>';
-      body.insertAdjacentHTML('beforeend', trendHtml);
-    }
-  }
-
-  // Brand analysis
-  var brandMap = {};
-  DATA.forEach(function(d) {
-    var b = (d.brand || '\u672A\u77E5').trim();
-    if (!brandMap[b]) brandMap[b] = {total:0, reps:0, pao:0};
-    brandMap[b].total++;
-    (d.replications||[]).forEach(function(r) {
-      brandMap[b].reps++;
-      if(r.effect==='\u8dd1\u91cf') brandMap[b].pao++;
-    });
-  });
-  var brandSorted = Object.keys(brandMap).filter(function(b) { return brandMap[b].reps > 0; }).sort(function(a,b) { return brandMap[b].reps - brandMap[a].reps; });
-  if (brandSorted.length > 0) {
-    var brandHtml = '<div class="card"><div class="card-h">\uD83C\uDFF7 \u54C1\u724C\u8868\u73B0</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u54C1\u724C</th><th>\u7075\u611F\u6570</th><th>\u590D\u523B</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-    brandSorted.forEach(function(b) {
-      var d = brandMap[b];
-      var rate = d.reps > 0 ? (d.pao/d.reps*100).toFixed(0) : 0;
-      brandHtml += '<tr><td style="cursor:pointer;color:var(--blue)" onclick="searchAndGo(\x27'+esc(b)+'\x27)"><strong>'+esc(b)+'</strong></td><td>'+d.total+'</td><td>'+d.reps+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-    });
-    brandHtml += '</tbody></table></div></div>';
-    body.insertAdjacentHTML('beforeend', brandHtml);
-  }
-
-
-  // Trend: monthly replication data
-  var allReps = [];
-  DATA.forEach(function(d) { (d.replications||[]).forEach(function(r) { allReps.push({date:r.date, effect:r.effect, name:d.name, visual:d.visual, brand:d.brand}); }); });
-  allReps.sort(function(a,b) { return (a.date||'').localeCompare(b.date||''); });
-
-  if (allReps.length > 0) {
-    var monthMap = {};
-    allReps.forEach(function(r) {
-      if (!r.date) return;
-      var m = r.date.substring(0,7);
-      if (!monthMap[m]) monthMap[m] = {total:0, pao:0};
-      monthMap[m].total++;
-      if (r.effect === '跑量') monthMap[m].pao++;
-    });
-    var months = Object.keys(monthMap).sort();
-    if (months.length > 0) {
-      var trendHtml = '<div class="card"><div class="card-h">\uD83D\uDCC8 \u8D8B\u52BF\u5206\u6790 <span style="font-weight:400;font-size:.75rem;color:var(--t4);margin-left:8px">\u6309\u6708\u590D\u523B\u8D8B\u52BF</span></div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u6708\u4EFD</th><th>\u590D\u523B\u6B21\u6570</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-      months.forEach(function(m) {
-        var d = monthMap[m];
-        var rate = d.total > 0 ? (d.pao/d.total*100).toFixed(0) : 0;
-        trendHtml += '<tr><td>'+m+'</td><td>'+d.total+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-      });
-      trendHtml += '</tbody></table></div></div>';
-      body.insertAdjacentHTML('beforeend', trendHtml);
-    }
-  }
-
-  // Brand analysis
-  var brandMap = {};
-  DATA.forEach(function(d) {
-    var b = (d.brand || '\u672A\u77E5').trim();
-    if (!brandMap[b]) brandMap[b] = {total:0, reps:0, pao:0};
-    brandMap[b].total++;
-    (d.replications||[]).forEach(function(r) {
-      brandMap[b].reps++;
-      if(r.effect==='\u8dd1\u91cf') brandMap[b].pao++;
-    });
-  });
-  var brandSorted = Object.keys(brandMap).filter(function(b) { return brandMap[b].reps > 0; }).sort(function(a,b) { return brandMap[b].reps - brandMap[a].reps; });
-  if (brandSorted.length > 0) {
-    var brandHtml = '<div class="card"><div class="card-h">\uD83C\uDFF7 \u54C1\u724C\u8868\u73B0</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u54C1\u724C</th><th>\u7075\u611F\u6570</th><th>\u590D\u523B</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-    brandSorted.forEach(function(b) {
-      var d = brandMap[b];
-      var rate = d.reps > 0 ? (d.pao/d.reps*100).toFixed(0) : 0;
-      brandHtml += '<tr><td><strong>'+esc(b)+'</strong></td><td>'+d.total+'</td><td>'+d.reps+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-    });
-    brandHtml += '</tbody></table></div></div>';
-    body.insertAdjacentHTML('beforeend', brandHtml);
-  }
-
-
-
-
-  // Trend: monthly replication data
-  var allReps = [];
-  DATA.forEach(function(d) { (d.replications||[]).forEach(function(r) { allReps.push({date:r.date, effect:r.effect, name:d.name, visual:d.visual, brand:d.brand}); }); });
-  allReps.sort(function(a,b) { return (a.date||'').localeCompare(b.date||''); });
-
-  if (allReps.length > 0) {
-    var monthMap = {};
-    allReps.forEach(function(r) {
-      if (!r.date) return;
-      var m = r.date.substring(0,7);
-      if (!monthMap[m]) monthMap[m] = {total:0, pao:0};
-      monthMap[m].total++;
-      if (r.effect === '跑量') monthMap[m].pao++;
-    });
-    var months = Object.keys(monthMap).sort();
-    if (months.length > 0) {
-      var trendHtml = '<div class="card"><div class="card-h">\uD83D\uDCC8 \u8D8B\u52BF\u5206\u6790 <span style="font-weight:400;font-size:.75rem;color:var(--t4);margin-left:8px">\u6309\u6708\u590D\u523B\u8D8B\u52BF</span></div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u6708\u4EFD</th><th>\u590D\u523B\u6B21\u6570</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-      months.forEach(function(m) {
-        var d = monthMap[m];
-        var rate = d.total > 0 ? (d.pao/d.total*100).toFixed(0) : 0;
-        trendHtml += '<tr><td>'+m+'</td><td>'+d.total+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-      });
-      trendHtml += '</tbody></table></div></div>';
-      body.insertAdjacentHTML('beforeend', trendHtml);
-    }
-  }
-
-  // Brand analysis
-  var brandMap = {};
-  DATA.forEach(function(d) {
-    var b = (d.brand || '\u672A\u77E5').trim();
-    if (!brandMap[b]) brandMap[b] = {total:0, reps:0, pao:0};
-    brandMap[b].total++;
-    (d.replications||[]).forEach(function(r) {
-      brandMap[b].reps++;
-      if(r.effect==='\u8dd1\u91cf') brandMap[b].pao++;
-    });
-  });
-  var brandSorted = Object.keys(brandMap).filter(function(b) { return brandMap[b].reps > 0; }).sort(function(a,b) { return brandMap[b].reps - brandMap[a].reps; });
-  if (brandSorted.length > 0) {
-    var brandHtml = '<div class="card"><div class="card-h">\uD83C\uDFF7 \u54C1\u724C\u8868\u73B0</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u54C1\u724C</th><th>\u7075\u611F\u6570</th><th>\u590D\u523B</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-    brandSorted.forEach(function(b) {
-      var d = brandMap[b];
-      var rate = d.reps > 0 ? (d.pao/d.reps*100).toFixed(0) : 0;
-      brandHtml += '<tr><td><strong>'+esc(b)+'</strong></td><td>'+d.total+'</td><td>'+d.reps+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-    });
-    brandHtml += '</tbody></table></div></div>';
-    body.insertAdjacentHTML('beforeend', brandHtml);
-  }
-
-
-
-
-  // Trend: monthly replication data
-  var allReps = [];
-  DATA.forEach(function(d) { (d.replications||[]).forEach(function(r) { allReps.push({date:r.date, effect:r.effect, name:d.name, visual:d.visual, brand:d.brand}); }); });
-  allReps.sort(function(a,b) { return (a.date||'').localeCompare(b.date||''); });
-
-  if (allReps.length > 0) {
-    var monthMap = {};
-    allReps.forEach(function(r) {
-      if (!r.date) return;
-      var m = r.date.substring(0,7);
-      if (!monthMap[m]) monthMap[m] = {total:0, pao:0};
-      monthMap[m].total++;
-      if (r.effect === '跑量') monthMap[m].pao++;
-    });
-    var months = Object.keys(monthMap).sort();
-    if (months.length > 0) {
-      var trendHtml = '<div class="card"><div class="card-h">\uD83D\uDCC8 \u8D8B\u52BF\u5206\u6790 <span style="font-weight:400;font-size:.75rem;color:var(--t4);margin-left:8px">\u6309\u6708\u590D\u523B\u8D8B\u52BF</span></div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u6708\u4EFD</th><th>\u590D\u523B\u6B21\u6570</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-      months.forEach(function(m) {
-        var d = monthMap[m];
-        var rate = d.total > 0 ? (d.pao/d.total*100).toFixed(0) : 0;
-        trendHtml += '<tr><td>'+m+'</td><td>'+d.total+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-      });
-      trendHtml += '</tbody></table></div></div>';
-      body.insertAdjacentHTML('beforeend', trendHtml);
-    }
-  }
-
-  // Brand analysis
-  var brandMap = {};
-  DATA.forEach(function(d) {
-    var b = (d.brand || '\u672A\u77E5').trim();
-    if (!brandMap[b]) brandMap[b] = {total:0, reps:0, pao:0};
-    brandMap[b].total++;
-    (d.replications||[]).forEach(function(r) {
-      brandMap[b].reps++;
-      if(r.effect==='\u8dd1\u91cf') brandMap[b].pao++;
-    });
-  });
-  var brandSorted = Object.keys(brandMap).filter(function(b) { return brandMap[b].reps > 0; }).sort(function(a,b) { return brandMap[b].reps - brandMap[a].reps; });
-  if (brandSorted.length > 0) {
-    var brandHtml = '<div class="card"><div class="card-h">\uD83C\uDFF7 \u54C1\u724C\u8868\u73B0</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u54C1\u724C</th><th>\u7075\u611F\u6570</th><th>\u590D\u523B</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-    brandSorted.forEach(function(b) {
-      var d = brandMap[b];
-      var rate = d.reps > 0 ? (d.pao/d.reps*100).toFixed(0) : 0;
-      brandHtml += '<tr><td><strong>'+esc(b)+'</strong></td><td>'+d.total+'</td><td>'+d.reps+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-    });
-    brandHtml += '</tbody></table></div></div>';
-    body.insertAdjacentHTML('beforeend', brandHtml);
-  }
-
-
-  // Trend: monthly replication data
-  var allReps = [];
-  DATA.forEach(function(d) { (d.replications||[]).forEach(function(r) { allReps.push({date:r.date, effect:r.effect, name:d.name, visual:d.visual, brand:d.brand}); }); });
-  allReps.sort(function(a,b) { return (a.date||'').localeCompare(b.date||''); });
-
-  if (allReps.length > 0) {
-    var monthMap = {};
-    allReps.forEach(function(r) {
-      if (!r.date) return;
-      var m = r.date.substring(0,7);
-      if (!monthMap[m]) monthMap[m] = {total:0, pao:0};
-      monthMap[m].total++;
-      if (r.effect === '跑量') monthMap[m].pao++;
-    });
-    var months = Object.keys(monthMap).sort();
-    if (months.length > 0) {
-      var trendHtml = '<div class="card"><div class="card-h">\uD83D\uDCC8 \u8D8B\u52BF\u5206\u6790 <span style="font-weight:400;font-size:.75rem;color:var(--t4);margin-left:8px">\u6309\u6708\u590D\u523B\u8D8B\u52BF</span></div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u6708\u4EFD</th><th>\u590D\u523B\u6B21\u6570</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-      months.forEach(function(m) {
-        var d = monthMap[m];
-        var rate = d.total > 0 ? (d.pao/d.total*100).toFixed(0) : 0;
-        trendHtml += '<tr><td>'+m+'</td><td>'+d.total+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-      });
-      trendHtml += '</tbody></table></div></div>';
-      body.insertAdjacentHTML('beforeend', trendHtml);
-    }
-  }
-
-  // Brand analysis
-  var brandMap = {};
-  DATA.forEach(function(d) {
-    var b = (d.brand || '\u672A\u77E5').trim();
-    if (!brandMap[b]) brandMap[b] = {total:0, reps:0, pao:0};
-    brandMap[b].total++;
-    (d.replications||[]).forEach(function(r) {
-      brandMap[b].reps++;
-      if(r.effect==='\u8dd1\u91cf') brandMap[b].pao++;
-    });
-  });
-  var brandSorted = Object.keys(brandMap).filter(function(b) { return brandMap[b].reps > 0; }).sort(function(a,b) { return brandMap[b].reps - brandMap[a].reps; });
-  if (brandSorted.length > 0) {
-    var brandHtml = '<div class="card"><div class="card-h">\uD83C\uDFF7 \u54C1\u724C\u8868\u73B0</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u54C1\u724C</th><th>\u7075\u611F\u6570</th><th>\u590D\u523B</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-    brandSorted.forEach(function(b) {
-      var d = brandMap[b];
-      var rate = d.reps > 0 ? (d.pao/d.reps*100).toFixed(0) : 0;
-      brandHtml += '<tr><td><strong>'+esc(b)+'</strong></td><td>'+d.total+'</td><td>'+d.reps+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-    });
-    brandHtml += '</tbody></table></div></div>';
-    body.insertAdjacentHTML('beforeend', brandHtml);
-  }
-
-
-
-
-  // Trend: monthly replication data
-  var allReps = [];
-  DATA.forEach(function(d) { (d.replications||[]).forEach(function(r) { allReps.push({date:r.date, effect:r.effect, name:d.name, visual:d.visual, brand:d.brand}); }); });
-  allReps.sort(function(a,b) { return (a.date||'').localeCompare(b.date||''); });
-
-  if (allReps.length > 0) {
-    var monthMap = {};
-    allReps.forEach(function(r) {
-      if (!r.date) return;
-      var m = r.date.substring(0,7);
-      if (!monthMap[m]) monthMap[m] = {total:0, pao:0};
-      monthMap[m].total++;
-      if (r.effect === '跑量') monthMap[m].pao++;
-    });
-    var months = Object.keys(monthMap).sort();
-    if (months.length > 0) {
-      var trendHtml = '<div class="card"><div class="card-h">\uD83D\uDCC8 \u8D8B\u52BF\u5206\u6790 <span style="font-weight:400;font-size:.75rem;color:var(--t4);margin-left:8px">\u6309\u6708\u590D\u523B\u8D8B\u52BF</span></div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u6708\u4EFD</th><th>\u590D\u523B\u6B21\u6570</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-      months.forEach(function(m) {
-        var d = monthMap[m];
-        var rate = d.total > 0 ? (d.pao/d.total*100).toFixed(0) : 0;
-        trendHtml += '<tr><td>'+m+'</td><td>'+d.total+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-      });
-      trendHtml += '</tbody></table></div></div>';
-      body.insertAdjacentHTML('beforeend', trendHtml);
-    }
-  }
-
-  // Brand analysis
-  var brandMap = {};
-  DATA.forEach(function(d) {
-    var b = (d.brand || '\u672A\u77E5').trim();
-    if (!brandMap[b]) brandMap[b] = {total:0, reps:0, pao:0};
-    brandMap[b].total++;
-    (d.replications||[]).forEach(function(r) {
-      brandMap[b].reps++;
-      if(r.effect==='\u8dd1\u91cf') brandMap[b].pao++;
-    });
-  });
-  var brandSorted = Object.keys(brandMap).filter(function(b) { return brandMap[b].reps > 0; }).sort(function(a,b) { return brandMap[b].reps - brandMap[a].reps; });
-  if (brandSorted.length > 0) {
-    var brandHtml = '<div class="card"><div class="card-h">\uD83C\uDFF7 \u54C1\u724C\u8868\u73B0</div><div class="combo-wrap"><table class="combo-tbl"><thead><tr><th>\u54C1\u724C</th><th>\u7075\u611F\u6570</th><th>\u590D\u523B</th><th>\u8DD1\u91CF</th><th>\u8DD1\u91CF\u7387</th></tr></thead><tbody>';
-    brandSorted.forEach(function(b) {
-      var d = brandMap[b];
-      var rate = d.reps > 0 ? (d.pao/d.reps*100).toFixed(0) : 0;
-      brandHtml += '<tr><td><strong>'+esc(b)+'</strong></td><td>'+d.total+'</td><td>'+d.reps+'</td><td class="cv">'+d.pao+'</td><td><span class="rate-badge '+(rate>=50?'rate-high':rate>=25?'rate-mid':'rate-low')+'">'+rate+'%</span></td></tr>';
-    });
-    brandHtml += '</tbody></table></div></div>';
-    body.insertAdjacentHTML('beforeend', brandHtml);
-  }
-
-  // AI analysis section
-  var sep = document.createElement('div');
-  sep.style.cssText = 'margin-top:28px;text-align:center';
-  sep.innerHTML = '<div style="border-top:1px solid var(--sep-l);padding-top:24px;margin-bottom:8px">'
-    + '<div style="font-size:.82rem;color:var(--t4);margin-bottom:16px">让 AI 根据当前数据分析策略方向</div>'
-    + '<button class="btn-m" style="font-size:1rem;padding:14px 36px" onclick="startAIAnalysis()">U0001f916 AI 深度解析</button></div>';
-  body.appendChild(sep);
 }
 
 
@@ -1239,7 +914,7 @@ async function renderRepDashboard() {
   if (!container) return;
   container.innerHTML = '<div id="rpFilterBar" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
     '<input type="text" class="ios-in" id="rpSearch" placeholder="🔍 搜索来源灵感 / 视觉锤 / 文案…" style="flex:1;min-width:140px">' +
-    '<button class="rp-fp" data-e="all" onclick="rpEff=\'all\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--blue);color:#fff;cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">全部</button>' +
+    '<button class="rp-fp" data-e="all" onclick="rpEff=\'all\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--blue);color:#fff;cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">全部</button>' +
     '<button class="rp-fp" data-e="\u8dd1\u91cf" onclick="rpEff=\'\u8dd1\u91cf\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">\u2705 \u8dd1\u91cf</button>' +
     '<button class="rp-fp" data-e="\u4e00\u822c" onclick="rpEff=\'\u4e00\u822c\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">\ud83d\udc4c \u4e00\u822c</button>' +
     '<button class="rp-fp" data-e="\u65e0\u6548\u679c" onclick="rpEff=\'\u65e0\u6548\u679c\';rerenderRp()" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--sep);background:var(--bg);color:var(--t3);cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600;transition:.15s">\u274c \u65e0\u6548\u679c</button>' +
