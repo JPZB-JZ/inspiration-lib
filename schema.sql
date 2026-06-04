@@ -52,3 +52,12 @@ CREATE TABLE IF NOT EXISTS ai_reports (
   data_snapshot TEXT COMMENT '生成时的数据快照JSON',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI分析报告';
+
+-- v2.3 migration: 多灵感 N:N 关联桥表
+CREATE TABLE IF NOT EXISTS replication_materials (
+  replication_id VARCHAR(36) NOT NULL,
+  material_id VARCHAR(36) NOT NULL,
+  PRIMARY KEY (replication_id, material_id),
+  FOREIGN KEY (replication_id) REFERENCES replications(id) ON DELETE CASCADE,
+  FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='复刻多灵感关联桥表';

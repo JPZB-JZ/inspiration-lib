@@ -198,6 +198,7 @@ let fSt = 'all';
 let charts = {};
 let replInspId = null;
 let editingReplId = null;
+let replMaterialIds = [];
 let rfEff = '跑量';
 let curPage = 1;
 
@@ -288,6 +289,15 @@ window.fetch = async function(url, opts) {
   }
   return res;
 };
+
+// 关联灵感点击跳转
+document.addEventListener('click', function(e) {
+  var t = e.target.closest('.repl-link-insp');
+  if (t) {
+    var name = t.getAttribute('data-n');
+    if (name) { searchAndGo(name); }
+  }
+});
 
 function toast(msg, type = 'ok') {
   const t = document.createElement('div');
@@ -518,20 +528,57 @@ function openReplForm(id) {
   const insp = DATA.find(d => d.id === id);
   if (!insp) return;
   replInspId = id;
+  replMaterialIds = [id];
   editingReplId = null;
   document.getElementById('replModalInsp').textContent = '为「' + insp.name + '」添加复刻';
   document.getElementById('rfLink').value = '';
   document.getElementById('rfSpend').value = '';
   document.getElementById('rfImp').value = '';
   document.getElementById('rfDate').value = td();
+  document.getElementById('rfLeads').value = '';
   document.getElementById('rfNotes').value = '';
   rfEff = '跑量';
   document.querySelectorAll('#rfEffG .pill').forEach(b => { b.className = 'pill'; if (b.dataset.v === '跑量') b.classList.add('r-on'); });
+
+  // 多灵感选择器
+  var searchInput = document.getElementById('rfSearch');
+  if (searchInput) searchInput.value = '';
+  var box = document.getElementById('rfInspList');
+  if (box) {
+    box.innerHTML = DATA.map(function(d) {
+      var sel = replMaterialIds.indexOf(d.id) >= 0 ? ' on' : '';
+      return '<label class="link-chk' + sel + '" onclick="toggleLink(\'' + d.id + '\',this)"><span>' + esc(d.name || '-') + '</span></label>';
+    }).join('');
+  }
+
   document.getElementById('replModal').style.display = 'flex';
   document.getElementById('rfLink').focus();
 }
 
-function closeReplForm() { document.getElementById('replModal').style.display = 'none'; replInspId = null; }
+function closeReplForm() { document.getElementById('replModal').style.display = 'none'; replInspId = null; editingReplId = null; replMaterialIds = []; }
+
+function toggleLink(id, el) {
+  if (replMaterialIds.includes(id)) {
+    if (replMaterialIds.length <= 1) return; // 至少保留一个
+    replMaterialIds = replMaterialIds.filter(x => x !== id);
+    el.classList.remove('on');
+  } else {
+    replMaterialIds.push(id);
+    el.classList.add('on');
+  }
+}
+
+function filterInspList() {
+  var box = document.getElementById('rfInspList');
+  if (!box) return;
+  var q = (document.getElementById('rfSearch') || {}).value || '';
+  var term = q.toLowerCase().trim();
+  var labels = box.querySelectorAll('.link-chk');
+  labels.forEach(function(l) {
+    var name = (l.textContent || '').toLowerCase();
+    l.style.display = (!term || name.indexOf(term) >= 0) ? '' : 'none';
+  });
+}
 
 function pickRfEff(v) {
   rfEff = v;
@@ -553,6 +600,7 @@ async function saveReplication() {
         method: 'PUT',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
+          materialIds: replMaterialIds,
           link: link,
           spend: parseFloat(document.getElementById('rfSpend').value) || 0,
           impressions: parseInt(document.getElementById('rfImp').value) || 0,
@@ -568,7 +616,7 @@ async function saveReplication() {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
-          materialId: replInspId, link,
+          materialIds: replMaterialIds, link,
           spend: parseFloat(document.getElementById('rfSpend').value) || 0,
           impressions: parseInt(document.getElementById('rfImp').value) || 0,
           leads: parseInt(document.getElementById('rfLeads').value) || 0,
@@ -689,6 +737,7 @@ async function renderLib() {
           const emoji = {'跑量':'✅','一般':'👌','无效果':'❌'};
           return `<div class="repl-item">
             <div class="repl-top"><span class="repl-eff eff-${r.effect}">${emoji[r.effect]||'👌'} ${r.effect}</span><span class="repl-date">${r.date||'-'}</span><button class="repl-del" onclick="delReplication('${d.id}','${r.id}')">✕</button></div>
+            ${r.linkedNames && r.linkedNames !== d.name ? '<div class="repl-linked">🔗 关联：'+r.linkedNames.split(', ').map(function(n){return '<span class="repl-link-insp" data-n="'+esc(n)+'">'+esc(n)+'</span>';}).join('、')+'</div>' : ''}
             <div class="repl-row">${r.link ? '<span class="repl-link" onclick="window.open(\''+esc(r.link)+'\',\'_blank\')">🔗 视频</span>' : ''}<span>💰 ¥${(r.spend||0).toLocaleString()}</span><span>👁️ ${(r.impressions||0).toLocaleString()}</span><span>📞 ${r.leads||0}线索</span><span>${r.leads > 0 ? '¥'+Math.round((r.spend||0)/(r.leads||1)).toLocaleString()+'/线索' : ''}</span><button class="repl-edit" onclick="editReplication('${d.id}','${r.id}')" style="margin-left:auto;padding:2px 8px;border:none;background:var(--bg);border-radius:6px;cursor:pointer;font-size:.7rem">✏️</button></div>
             ${r.notes ? '<div class="repl-notes">📝 '+esc(r.notes)+'</div>' : ''}
           </div>`;
@@ -708,7 +757,10 @@ function editReplication(matId, repId) {
   if (!rep) return;
   replInspId = matId;
   editingReplId = repId;
-  document.getElementById('replModalInsp').textContent = '为「' + mat.name + '」编辑复刻';
+  replMaterialIds = (rep.linkedIds && rep.linkedIds.length) ? rep.linkedIds : [matId];
+  var searchInput = document.getElementById('rfSearch');
+  if (searchInput) searchInput.value = '';
+  document.getElementById('replModalInsp').textContent = '编辑复刻「' + mat.name + '」' + (rep.linkedNames && rep.linkedNames !== mat.name ? '（关联：' + rep.linkedNames + '）' : '');
   document.getElementById('rfLink').value = rep.link || '';
   document.getElementById('rfSpend').value = rep.spend || '';
   document.getElementById('rfImp').value = rep.impressions || '';
@@ -717,6 +769,14 @@ function editReplication(matId, repId) {
   document.getElementById('rfNotes').value = rep.notes || '';
   rfEff = rep.effect || '跑量';
   document.querySelectorAll('#rfEffG .pill').forEach(function(b) { b.className = 'pill'; if (b.dataset.v === rfEff) b.classList.add('r-on'); });
+  // 多灵感选择器
+  var box = document.getElementById('rfInspList');
+  if (box) {
+    box.innerHTML = DATA.map(function(d) {
+      var sel = replMaterialIds.indexOf(d.id) >= 0 ? ' on' : '';
+      return '<label class="link-chk' + sel + '" onclick="toggleLink(\'' + d.id + '\',this)"><span>' + esc(d.name || '-') + '</span></label>';
+    }).join('');
+  }
   document.getElementById('replModal').style.display = 'flex';
 }
 

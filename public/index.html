@@ -180,6 +180,11 @@
     <div class="modal-h">➕ 添加复刻记录</div>
     <div class="modal-sub" id="replModalInsp">为「灵感名称」添加复刻</div>
     <div class="modal-body-inner">
+      <div class="ff full" style="border-bottom:1px solid var(--sep-l)">
+        <label>关联灵感（可多选）</label>
+      <input type="text" class="ios-in" id="rfSearch" placeholder="🔍 搜索灵感名称…" oninput="filterInspList()" style="margin-bottom:6px;font-size:.78rem;padding:6px 10px">
+        <div class="link-box" id="rfInspList" style="max-height:160px;overflow-y:auto"></div>
+      </div>
       <div class="ff full">
         <label>我们拍的视频链接 *</label>
         <input class="ios-in mono" id="rfLink" placeholder="复制我们自己的视频链接">

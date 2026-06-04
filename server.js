@@ -100,7 +100,10 @@ async function getAllMaterials(search, brand, status) {
   const ids = materials.map(m => m.id);
   if (!ids.length) return [];
 
-  const [repls] = await pool.query('SELECT * FROM replications WHERE material_id IN (?) ORDER BY created_at ASC', [ids]);
+  const [repls] = await pool.query(`SELECT r.*,
+    (SELECT GROUP_CONCAT(DISTINCT rm2.material_id SEPARATOR ',') FROM replication_materials rm2 WHERE rm2.replication_id = r.id) AS linked_ids,
+    (SELECT GROUP_CONCAT(DISTINCT m2.name SEPARATOR ', ') FROM replication_materials rm2 JOIN materials m2 ON rm2.material_id = m2.id WHERE rm2.replication_id = r.id) AS linked_names
+    FROM replications r WHERE r.material_id IN (?) ORDER BY r.created_at ASC`, [ids]);
 
   const replMap = {};
   repls.forEach(r => {
@@ -109,6 +112,8 @@ async function getAllMaterials(search, brand, status) {
       id: r.id, link: r.link || '', spend: parseFloat(r.spend) || 0,
       impressions: r.impressions || 0, effect: r.effect || '一般',
       notes: r.notes || '', leads: r.leads || 0, date: r.date ? r.date.toISOString().split('T')[0] : '',
+      linkedIds: r.linked_ids ? r.linked_ids.split(',').filter(Boolean) : [],
+      linkedNames: r.linked_names || '',
     });
   });
 
@@ -185,15 +190,19 @@ app.delete('/api/materials/:id', async (req, res) => {
 
 app.post('/api/replications', async (req, res) => {
   try {
-    const { materialId, link, spend, impressions, leads, effect, notes, date } = req.body;
-    if (!materialId) return res.status(400).json({ error: '缺少 materialId' });
+    const { materialIds, link, spend, impressions, leads, effect, notes, date } = req.body;
+    if (!materialIds || !materialIds.length) return res.status(400).json({ error: '请至少选择一个灵感' });
     const id = 'r_' + uid();
+    const primaryId = materialIds[0];
     await pool.query(
       'INSERT INTO replications (id, material_id, link, spend, impressions, leads, effect, notes, date) VALUES (?,?,?,?,?,?,?,?,?)',
-      [id, materialId, link || '', parseFloat(spend) || 0, parseInt(impressions) || 0,
+      [id, primaryId, link || '', parseFloat(spend) || 0, parseInt(impressions) || 0,
        parseInt(leads) || 0, effect || '一般', notes || '', date || null]
     );
-    await pool.query("UPDATE materials SET status='已验证' WHERE id=? AND status='待复刻'", [materialId]);
+    for (const mid of materialIds) {
+      await pool.query('INSERT INTO replication_materials (replication_id, material_id) VALUES (?,?)', [id, mid]);
+      await pool.query("UPDATE materials SET status='已验证' WHERE id=? AND status='待复刻'", [mid]);
+    }
     res.status(201).json(await getAllMaterials('', '', 'all'));
   } catch (err) {
     res.status(500).json({ error: '保存复刻失败: ' + err.message });
@@ -203,12 +212,19 @@ app.post('/api/replications', async (req, res) => {
 app.put('/api/replications/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { link, spend, impressions, leads, effect, notes, date } = req.body;
+    const { materialIds, link, spend, impressions, leads, effect, notes, date } = req.body;
     await pool.query(
       'UPDATE replications SET link=?, spend=?, impressions=?, leads=?, effect=?, notes=?, date=? WHERE id=?',
       [link || '', parseFloat(spend) || 0, parseInt(impressions) || 0,
        parseInt(leads) || 0, effect || '一般', notes || '', date || null, id]
     );
+    // Update material associations
+    if (materialIds && materialIds.length) {
+      await pool.query('DELETE FROM replication_materials WHERE replication_id=?', [id]);
+      for (const mid of materialIds) {
+        await pool.query('INSERT INTO replication_materials (replication_id, material_id) VALUES (?,?)', [id, mid]);
+      }
+    }
     res.json(await getAllMaterials('', '', 'all'));
   } catch (err) {
     res.status(500).json({ error: '更新复刻失败: ' + err.message });

@@ -268,6 +268,14 @@ body{font-family:'Noto Sans SC',-apple-system,sans-serif;background:var(--bg);co
 .repl-link:hover{text-decoration:underline}
 .repl-notes{font-size:.8rem;color:var(--t2);margin-top:4px;line-height:1.5}
 
+.link-box{display:flex;flex-wrap:wrap;gap:4px;padding:6px 0}
+.link-chk{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:var(--bg);font-size:.74rem;cursor:pointer;border:1px solid var(--sep);transition:.1s;user-select:none}
+.link-chk.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.link-chk:hover{border-color:var(--blue)}
+.repl-linked{font-size:.72rem;color:var(--blue);padding:1px 0 3px}
+.repl-link-insp{color:var(--blue);cursor:pointer;text-decoration:none}
+.repl-link-insp:hover{text-decoration:underline}
+
 /* ================================================================
    分页
    ================================================================ */
